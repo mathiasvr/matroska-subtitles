@@ -1,0 +1,32 @@
+{
+  "name": "matroska-subtitles",
+  "version": "1.0.0",
+  "description": "Transform stream for parsing embedded .mkv subtitles.",
+  "main": "index.js",
+  "dependencies": {
+    "ebml": "^2.2.0",
+    "through2": "^2.0.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "standard"
+  },
+  "keywords": [
+    "mkv",
+    "srt",
+    "matroska",
+    "subtitle",
+    "extract",
+    "parse"
+  ],
+  "author": "Mathias Rasmussen <mathiasvr@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mathiasvr/matroska-subtitles.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mathiasvr/matroska-subtitles/issues"
+  },
+  "homepage": "https://github.com/mathiasvr/matroska-subtitles#readme"
+}
