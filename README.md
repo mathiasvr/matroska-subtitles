@@ -9,6 +9,8 @@
 
 Transform stream for parsing embedded .mkv subtitles.
 
+> Currently only supports the .srt format.
+
 ## install
 
 ```
@@ -86,6 +88,10 @@ The response of this example would look like this:
 This is still a work in progress.
 
 If you find a bug or have suggestions feel free to create an issue or a pull request!
+
+## see also 
+
+[mkv-subtitle-extractor](https://www.npmjs.com/package/mkv-subtitle-extractor)
 
 ## license
 
