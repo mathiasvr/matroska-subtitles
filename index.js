@@ -1,4 +1,5 @@
 const ebml = require('ebml')
+const ebmlBlock = require('ebml-block')
 const through = require('through2')
 
 module.exports = function () {
@@ -32,21 +33,27 @@ module.exports = function () {
     }
 
     if (chunk[0] === 'end' && chunk[1].name === 'TrackEntry') {
-      // TODO: would a subtitle track ever use lacing?
       // 0x11: Subtitle Track, S_TEXT/UTF8: SRT format
-      if (currentTrack.TrackType === 0x11 && currentTrack.CodecID === 'S_TEXT/UTF8' && !currentTrack.FlagLacing) {
-        stream.push(['new', {
-          track: currentTrack.TrackNumber,
-          language: currentTrack.Language
-        }])
-        subtitleTracks.set(currentTrack.TrackNumber, true)
+      if (currentTrack.TrackType === 0x11) {
+        //if (['S_TEXT/UTF8'].includes(currentTrack.CodecID)) {
+        if (currentTrack.CodecID === 'S_TEXT/UTF8' || currentTrack.CodecID === 'S_TEXT/ASS') {
+          stream.push(['new', {
+            track: currentTrack.TrackNumber,
+            language: currentTrack.Language,
+            type: currentTrack.CodecID.substring(7),
+            header: currentTrack.CodecPrivate ? currentTrack.CodecPrivate.toString('utf8') : null // TODO: only ssa/ass
+          }])
+          subtitleTracks.set(currentTrack.TrackNumber, true)
+        } /*else if (currentTrack.CodecID === 'S_TEXT/ASS') {
+          console.log(currentTrack.CodecID)
+        }*/
       }
       currentTrack = null
     }
 
     if (currentTrack && chunk[0] === 'tag') {
       // save info about track currently being scanned
-      if (['TrackNumber', 'TrackType', 'Language', 'CodecID', 'FlagLacing'].includes(chunk[1].name)) {
+      if (['TrackNumber', 'TrackType', 'Language', 'CodecID', 'CodecPrivate'].includes(chunk[1].name)) {
         currentTrack[chunk[1].name] = readData(chunk)
       }
     }
@@ -54,21 +61,13 @@ module.exports = function () {
     // Blocks //
 
     if (chunk[1].name === 'Block') {
-      var data = chunk[1].data
-      var v = ebml.tools.readVint(data)
+      var block = ebmlBlock(chunk[1].data)
 
-      var trackNumber = v.value
-
-      if (subtitleTracks.has(trackNumber)) {
-        var offset = v.length
-        var timecode = data.readInt16BE(offset)
-
-        // assume that block uses no lacing (respects the Track FlagLacing element)
-        offset += 3
-
-        currentSubtitleBlock = [ trackNumber, {
-          text: data.toString('utf8', offset),
-          time: (timecode + currentClusterTimecode) * timecodeScale
+      if (subtitleTracks.has(block.trackNumber)) {
+        // TODO: would a subtitle track ever use lacing? We just take the first frame.
+        currentSubtitleBlock = [ block.trackNumber, {
+          text: block.frames[0].toString('utf8'),
+          time: (block.timecode + currentClusterTimecode) * timecodeScale
         } ]
       }
     }
@@ -92,9 +91,10 @@ module.exports = function () {
 
 function readData (chunk) {
   switch (chunk[1].type) {
+    case 'b': return chunk[1].data
     case 's': return chunk[1].data.toString('ascii')
     case '8': return chunk[1].data.toString('utf8')
     case 'u': return chunk[1].data.readUIntBE(0, chunk[1].dataSize)
-    default : console.error('Unsupported data:', chunk)
+    default: console.error('Unsupported data:', chunk)
   }
 }
