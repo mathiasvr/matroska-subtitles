@@ -2,6 +2,11 @@ const ebml = require('ebml')
 const ebmlBlock = require('ebml-block')
 const through = require('through2')
 
+// track elements we care about
+const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'CodecPrivate']
+
+const ASS_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
+
 module.exports = function () {
   const subtitleTracks = new Map()
   const decoder = new ebml.Decoder()
@@ -35,25 +40,26 @@ module.exports = function () {
     if (chunk[0] === 'end' && chunk[1].name === 'TrackEntry') {
       // 0x11: Subtitle Track, S_TEXT/UTF8: SRT format
       if (currentTrack.TrackType === 0x11) {
-        //if (['S_TEXT/UTF8'].includes(currentTrack.CodecID)) {
         if (currentTrack.CodecID === 'S_TEXT/UTF8' || currentTrack.CodecID === 'S_TEXT/ASS') {
-          stream.push(['new', {
+          subtitleTracks.set(currentTrack.TrackNumber, currentTrack.CodecID)
+          var info = {
             track: currentTrack.TrackNumber,
             language: currentTrack.Language,
-            type: currentTrack.CodecID.substring(7),
-            header: currentTrack.CodecPrivate ? currentTrack.CodecPrivate.toString('utf8') : null // TODO: only ssa/ass
-          }])
-          subtitleTracks.set(currentTrack.TrackNumber, true)
-        } /*else if (currentTrack.CodecID === 'S_TEXT/ASS') {
-          console.log(currentTrack.CodecID)
-        }*/
+            type: currentTrack.CodecID.substring(7)
+          }
+          if (currentTrack.CodecPrivate) {
+            // only SSA/ASS
+            info.header = currentTrack.CodecPrivate.toString('utf8')
+          }
+          stream.push(['new', info])
+        }
       }
       currentTrack = null
     }
 
     if (currentTrack && chunk[0] === 'tag') {
       // save info about track currently being scanned
-      if (['TrackNumber', 'TrackType', 'Language', 'CodecID', 'CodecPrivate'].includes(chunk[1].name)) {
+      if (TRACK_ELEMENTS.includes(chunk[1].name)) {
         currentTrack[chunk[1].name] = readData(chunk)
       }
     }
@@ -64,11 +70,28 @@ module.exports = function () {
       var block = ebmlBlock(chunk[1].data)
 
       if (subtitleTracks.has(block.trackNumber)) {
-        // TODO: would a subtitle track ever use lacing? We just take the first frame.
-        currentSubtitleBlock = [ block.trackNumber, {
+        var type = subtitleTracks.get(block.trackNumber)
+
+        // TODO: would a subtitle track ever use lacing? We just take the first (only) frame.
+        var subtitle = {
           text: block.frames[0].toString('utf8'),
           time: (block.timecode + currentClusterTimecode) * timecodeScale
-        } ]
+        }
+
+        if (type === 'S_TEXT/ASS') {
+          // extract ASS keys
+          var values = subtitle.text.split(',')
+          // ignore read-order
+          for (var i = 1; i < 9; i++) {
+            subtitle[ASS_KEYS[i]] = values[i]
+          }
+          // re-append extra text that might have been splitted
+          for (i = 9; i < values.length; i++) {
+            subtitle.text += ',' + values[i]
+          }
+        }
+
+        currentSubtitleBlock = [block.trackNumber, subtitle]
       }
     }
 
@@ -91,10 +114,15 @@ module.exports = function () {
 
 function readData (chunk) {
   switch (chunk[1].type) {
-    case 'b': return chunk[1].data
-    case 's': return chunk[1].data.toString('ascii')
-    case '8': return chunk[1].data.toString('utf8')
-    case 'u': return chunk[1].data.readUIntBE(0, chunk[1].dataSize)
-    default: console.error('Unsupported data:', chunk)
+    case 'b':
+      return chunk[1].data
+    case 's':
+      return chunk[1].data.toString('ascii')
+    case '8':
+      return chunk[1].data.toString('utf8')
+    case 'u':
+      return chunk[1].data.readUIntBE(0, chunk[1].dataSize)
+    default:
+      console.error('Unsupported data:', chunk)
   }
 }

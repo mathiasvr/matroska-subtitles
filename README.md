@@ -9,7 +9,7 @@
 
 Transform stream for parsing embedded .mkv subtitles.
 
-> Currently only supports the .srt format.
+> Currently supports extraction of the .srt and .ass format.
 
 ## install
 
@@ -32,7 +32,7 @@ data = [ <track number>, { text: <string>, time: <ms>, duration: <ms> } ]
 
 ## example
 
-The following is a basic example of extracting subtitle tracks of an mkv:
+The following is an example of extracting subtitle tracks of an mkv:
 
 ```javascript
 const fs = require('fs')
