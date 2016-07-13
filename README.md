@@ -17,7 +17,7 @@ Transform stream for parsing embedded .mkv subtitles.
 npm install matroska-subtitles
 ```
 
-## documetation
+## documentation
 
 The `data` event of the stream will emit an array that determines the type of the data.
 When a new subtitle track is encountered a *track number* and *language* is emitted:
