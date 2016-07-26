@@ -100,6 +100,8 @@ module.exports = function () {
       currentSubtitleBlock[1].duration = readData(chunk) * timecodeScale
 
       stream.push(currentSubtitleBlock)
+
+      currentSubtitleBlock = null
     }
   })
 
