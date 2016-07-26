@@ -20,17 +20,35 @@ npm install matroska-subtitles
 ## documentation
 
 The `data` event of the stream will emit an array that determines the type of the data.
-When a new subtitle track is encountered a *track number* and *language* is emitted:
-```javascript
-data = [ 'new', { track: <track number>, language: <string> } ]
+When a new subtitle track is encountered the *track number*, *language*, *type* and optionally a *header* is emitted:
+
+```
+data = [ 'new', { track: <track number>, language: <string>, type: <string>, header: <string> } ]
 ```
 
 Subsequently a specific subtitle track will emit data of this form:
-```javascript
+```
 data = [ <track number>, { text: <string>, time: <ms>, duration: <ms> } ]
 ```
 
-## example
+## examples
+
+### dump all subtitles
+
+```javascript
+const fs = require('fs')
+const matroskaSubtitles = require('matroska-subtitles')
+
+var subs = matroskaSubtitles()
+
+subs.on('data', function (data) {
+  console.log(data)
+})
+
+fs.createReadStream('Sintel.2010.720p.mkv').pipe(subs)
+```
+
+### group subtitle tracks
 
 The following is an example of extracting subtitle tracks of an mkv:
 
