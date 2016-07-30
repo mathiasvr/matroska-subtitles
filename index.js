@@ -79,10 +79,11 @@ module.exports = function () {
         }
 
         if (type === 'S_TEXT/ASS') {
+          var i
           // extract ASS keys
           var values = subtitle.text.split(',')
           // ignore read-order
-          for (var i = 1; i < 9; i++) {
+          for (i = 1; i < 9; i++) {
             subtitle[ASS_KEYS[i]] = values[i]
           }
           // re-append extra text that might have been splitted
@@ -105,15 +106,23 @@ module.exports = function () {
     }
   })
 
-  // create object stream
-  var stream = through.obj(function write (chunk, _, callback) {
+  // object stream
+  var stream = through.obj(transform, flush)
+
+  function transform (chunk, _, callback) {
     decoder.write(chunk)
     callback()
-  })
+  }
+
+  function flush (callback) {
+    decoder.end()
+    callback()
+  }
 
   return stream
 }
 
+// TODO: module
 function readData (chunk) {
   switch (chunk[1].type) {
     case 'b':
