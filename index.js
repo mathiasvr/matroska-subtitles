@@ -7,7 +7,7 @@ const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'Code
 
 const ASS_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
 
-module.exports = function () {
+module.exports = function (tracks) {
   const subtitleTracks = new Map()
   const decoder = new ebml.Decoder()
 
@@ -17,7 +17,17 @@ module.exports = function () {
   var currentSubtitleBlock
   var currentClusterTimecode
 
-  decoder.on('data', function (chunk) {
+  var readTrackInfo = true // TODO: refactor with multiple decoder functions
+
+  if (tracks && Array.isArray(tracks)) {
+    readTrackInfo = false
+    tracks.forEach(function (track) {
+      subtitleTracks.set(track.number, track)
+    })
+  }
+
+  decoder.on('data', decode)
+  function decode (chunk) {
     // Segment Information //
 
     if (chunk[1].name === 'TimecodeScale') {
@@ -33,35 +43,44 @@ module.exports = function () {
 
     // Tracks //
 
-    if (chunk[0] === 'start' && chunk[1].name === 'TrackEntry') {
-      currentTrack = {}
-    }
+    if(readTrackInfo) { // todo: only read track info once
 
-    if (chunk[0] === 'end' && chunk[1].name === 'TrackEntry') {
-      // 0x11: Subtitle Track, S_TEXT/UTF8: SRT format
-      if (currentTrack.TrackType === 0x11) {
-        if (currentTrack.CodecID === 'S_TEXT/UTF8' || currentTrack.CodecID === 'S_TEXT/ASS') {
-          subtitleTracks.set(currentTrack.TrackNumber, currentTrack.CodecID)
-          var info = {
-            track: currentTrack.TrackNumber,
-            language: currentTrack.Language,
-            type: currentTrack.CodecID.substring(7)
-          }
-          if (currentTrack.CodecPrivate) {
-            // only SSA/ASS
-            info.header = currentTrack.CodecPrivate.toString('utf8')
-          }
-          stream.push(['new', info])
+      if (chunk[0] === 'start' && chunk[1].name === 'TrackEntry') {
+        currentTrack = {}
+      }
+
+      if (currentTrack && chunk[0] === 'tag') {
+        // save info about track currently being scanned
+        if (TRACK_ELEMENTS.includes(chunk[1].name)) {
+          currentTrack[chunk[1].name] = readData(chunk)
         }
       }
-      currentTrack = null
-    }
 
-    if (currentTrack && chunk[0] === 'tag') {
-      // save info about track currently being scanned
-      if (TRACK_ELEMENTS.includes(chunk[1].name)) {
-        currentTrack[chunk[1].name] = readData(chunk)
+      if (chunk[0] === 'end' && chunk[1].name === 'TrackEntry') {
+        // 0x11: Subtitle Track, S_TEXT/UTF8: SRT format
+        if (currentTrack.TrackType === 0x11) {
+          if (currentTrack.CodecID === 'S_TEXT/UTF8' || currentTrack.CodecID === 'S_TEXT/ASS') {
+            var track = {
+              number: currentTrack.TrackNumber,
+              language: currentTrack.Language,
+              type: currentTrack.CodecID.substring(7)
+            }
+            if (currentTrack.CodecPrivate) {
+              // only SSA/ASS
+              track.header = currentTrack.CodecPrivate.toString('utf8')
+            }
+
+            subtitleTracks.set(currentTrack.TrackNumber, track)
+          }
+        }
+        currentTrack = null
       }
+
+      if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
+        //readTrackInfo = false
+        stream.push(Array.from(subtitleTracks.values()))
+      }
+
     }
 
     // Blocks //
@@ -70,7 +89,7 @@ module.exports = function () {
       var block = ebmlBlock(chunk[1].data)
 
       if (subtitleTracks.has(block.trackNumber)) {
-        var type = subtitleTracks.get(block.trackNumber)
+        var type = subtitleTracks.get(block.trackNumber).type
 
         // TODO: would a subtitle track ever use lacing? We just take the first (only) frame.
         var subtitle = {
@@ -78,7 +97,7 @@ module.exports = function () {
           time: (block.timecode + currentClusterTimecode) * timecodeScale
         }
 
-        if (type === 'S_TEXT/ASS') {
+        if (type === 'ASS') {
           var i
           // extract ASS keys
           var values = subtitle.text.split(',')
@@ -104,7 +123,7 @@ module.exports = function () {
 
       currentSubtitleBlock = null
     }
-  })
+  }
 
   // object stream
   var stream = through.obj(transform, flush)
