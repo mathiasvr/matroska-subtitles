@@ -7,80 +7,99 @@ const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'Code
 
 const ASS_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
 
-module.exports = function (tracks) {
-  const subtitleTracks = new Map()
+module.exports = function (prevInstance) {
+  var subtitleTracks = new Map()
   const decoder = new ebml.Decoder()
 
   var timecodeScale = 1
 
-  var currentTrack
+  var currentTrack // meta
+
   var currentSubtitleBlock
   var currentClusterTimecode
 
-  var readTrackInfo = true // TODO: refactor with multiple decoder functions
-
-  if (tracks && Array.isArray(tracks)) {
-    readTrackInfo = false
-    tracks.forEach(function (track) {
-      subtitleTracks.set(track.number, track)
-    })
+  // TODO: make an actual instance 
+  if (prevInstance && prevInstance._subtitleTracks && prevInstance._timecodeScale) {
+    prevInstance.end()
+    subtitleTracks = prevInstance._subtitleTracks
+    timecodeScale = prevInstance._timecodeScale
+    decoder.on('data', blocks)
+  } else {
+    decoder.on('data', metadata)
   }
 
-  decoder.on('data', decode)
-  function decode (chunk) {
+  // object stream
+  var stream = through.obj(transform, flush)
+
+  function transform (chunk, _, callback) {
+    decoder.write(chunk)
+    callback()
+  }
+
+  function flush (callback) {
+    decoder.end()
+    callback()
+  }
+
+  // TODO: refactor, instance
+  stream._timecodeScale = timecodeScale
+  stream._subtitleTracks = subtitleTracks
+
+  return stream
+
+  function metadata (chunk) {
     // Segment Information //
 
     if (chunk[1].name === 'TimecodeScale') {
       timecodeScale = readData(chunk) / 1000000
     }
 
+    // Tracks //
+
+    if (chunk[0] === 'start' && chunk[1].name === 'TrackEntry') {
+      currentTrack = {}
+    }
+
+    if (currentTrack && chunk[0] === 'tag') {
+      // save info about track currently being scanned
+      if (TRACK_ELEMENTS.includes(chunk[1].name)) {
+        currentTrack[chunk[1].name] = readData(chunk)
+      }
+    }
+
+    if (chunk[0] === 'end' && chunk[1].name === 'TrackEntry') {
+      // 0x11: Subtitle Track, S_TEXT/UTF8: SRT format
+      if (currentTrack.TrackType === 0x11) {
+        if (currentTrack.CodecID === 'S_TEXT/UTF8' || currentTrack.CodecID === 'S_TEXT/ASS') {
+          var track = {
+            number: currentTrack.TrackNumber,
+            language: currentTrack.Language,
+            type: currentTrack.CodecID.substring(7)
+          }
+          if (currentTrack.CodecPrivate) {
+            // only SSA/ASS
+            track.header = currentTrack.CodecPrivate.toString('utf8')
+          }
+
+          subtitleTracks.set(currentTrack.TrackNumber, track)
+        }
+      }
+      currentTrack = null
+    }
+
+    if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
+      decoder.removeListener('data', metadata)
+      decoder.on('data', blocks)
+      stream.push(Array.from(subtitleTracks.values()))
+    }
+  }
+
+  function blocks (chunk) {
     // Clusters //
 
     // TODO: assuming this is a Cluster `Timecode`
     if (chunk[1].name === 'Timecode') {
       currentClusterTimecode = readData(chunk)
-    }
-
-    // Tracks //
-
-    if(readTrackInfo) { // todo: only read track info once
-
-      if (chunk[0] === 'start' && chunk[1].name === 'TrackEntry') {
-        currentTrack = {}
-      }
-
-      if (currentTrack && chunk[0] === 'tag') {
-        // save info about track currently being scanned
-        if (TRACK_ELEMENTS.includes(chunk[1].name)) {
-          currentTrack[chunk[1].name] = readData(chunk)
-        }
-      }
-
-      if (chunk[0] === 'end' && chunk[1].name === 'TrackEntry') {
-        // 0x11: Subtitle Track, S_TEXT/UTF8: SRT format
-        if (currentTrack.TrackType === 0x11) {
-          if (currentTrack.CodecID === 'S_TEXT/UTF8' || currentTrack.CodecID === 'S_TEXT/ASS') {
-            var track = {
-              number: currentTrack.TrackNumber,
-              language: currentTrack.Language,
-              type: currentTrack.CodecID.substring(7)
-            }
-            if (currentTrack.CodecPrivate) {
-              // only SSA/ASS
-              track.header = currentTrack.CodecPrivate.toString('utf8')
-            }
-
-            subtitleTracks.set(currentTrack.TrackNumber, track)
-          }
-        }
-        currentTrack = null
-      }
-
-      if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
-        //readTrackInfo = false
-        stream.push(Array.from(subtitleTracks.values()))
-      }
-
     }
 
     // Blocks //
@@ -124,21 +143,6 @@ module.exports = function (tracks) {
       currentSubtitleBlock = null
     }
   }
-
-  // object stream
-  var stream = through.obj(transform, flush)
-
-  function transform (chunk, _, callback) {
-    decoder.write(chunk)
-    callback()
-  }
-
-  function flush (callback) {
-    decoder.end()
-    callback()
-  }
-
-  return stream
 }
 
 // TODO: module
