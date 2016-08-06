@@ -28,17 +28,16 @@ module.exports = function (prevInstance) {
     decoder.on('data', metadata)
   }
 
-  // object stream
-  var stream = through.obj(transform, flush)
+  var stream = through(transform, flush)
 
   function transform (chunk, _, callback) {
     decoder.write(chunk)
-    callback()
+    callback(null)
   }
 
   function flush (callback) {
     decoder.end()
-    callback()
+    callback(null)
   }
 
   // TODO: refactor, instance
@@ -90,7 +89,7 @@ module.exports = function (prevInstance) {
     if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
       decoder.removeListener('data', metadata)
       decoder.on('data', blocks)
-      stream.push(Array.from(subtitleTracks.values()))
+      stream.emit('tracks', Array.from(subtitleTracks.values()))
     }
   }
 
@@ -138,7 +137,7 @@ module.exports = function (prevInstance) {
     if (currentSubtitleBlock && chunk[1].name === 'BlockDuration') {
       currentSubtitleBlock[1].duration = readData(chunk) * timecodeScale
 
-      stream.push(currentSubtitleBlock)
+      stream.emit('subtitle', currentSubtitleBlock[1], currentSubtitleBlock[0])
 
       currentSubtitleBlock = null
     }
