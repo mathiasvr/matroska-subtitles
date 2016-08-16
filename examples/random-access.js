@@ -1,31 +1,26 @@
 const fs = require('fs')
 const matroskaSubtitles = require('..')
 
-var subs = matroskaSubtitles()
+var parser = matroskaSubtitles()
 
-// first an array of subtitle track information will be emitted
-subs.once('data', function (tracks) {
+parser.once('tracks', function (tracks) {
   console.log(tracks)
 
-  //fstream.unpipe(subs)
-  
-  //subs.end()
-  
-  subs = matroskaSubtitles(subs)
+  // filestream.unpipe(parser)
+  // parser.end()
 
-  // following objects are subtitles
-  subs.on('data', function (obj) {
-    var num = obj[0]
-    var subtitle = obj[1]
-    console.log('track ' + num + ':', subtitle)
+  // copy track metainfo to a new parser
+  parser = matroskaSubtitles(parser)
+
+  parser.on('subtitle', function (subtitle, trackNumber) {
+    console.log('track ' + trackNumber + ':', subtitle)
   })
 
- // fstream.pipe(subs)
-  //fs.createReadStream(process.argv[2]).pipe(subs)
-  fs.createReadStream(null, { fd: fstream.fd, start: 29737907 }).pipe(subs)
-  
+  // create a new stream and read from a specific position
+  fs.createReadStream(null, { fd: filestream.fd, start: 29737907 }).pipe(parser)
 })
 
-var fstream = fs.createReadStream(process.argv[2])
-fstream.pipe(subs)
-//fs.createReadStream(process.argv[2]).pipe(subs)
+// create a stream starting from the beginning of the file
+var filestream = fs.createReadStream(process.argv[2])
+
+filestream.pipe(parser)
