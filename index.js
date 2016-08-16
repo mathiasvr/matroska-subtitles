@@ -2,6 +2,8 @@ const ebml = require('ebml')
 const ebmlBlock = require('ebml-block')
 const through = require('through2')
 
+const readElement = require('./lib/read-element')
+
 // track elements we care about
 const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'CodecPrivate']
 
@@ -18,14 +20,14 @@ module.exports = function (prevInstance) {
   var currentSubtitleBlock
   var currentClusterTimecode
 
-  // TODO: make an actual instance 
+  // TODO: make an actual instance
   if (prevInstance && prevInstance._subtitleTracks && prevInstance._timecodeScale) {
     prevInstance.end()
     subtitleTracks = prevInstance._subtitleTracks
     timecodeScale = prevInstance._timecodeScale
-    decoder.on('data', blocks)
+    decoder.on('data', onClusterData)
   } else {
-    decoder.on('data', metadata)
+    decoder.on('data', onMetaData)
   }
 
   var stream = through(transform, flush)
@@ -46,15 +48,13 @@ module.exports = function (prevInstance) {
 
   return stream
 
-  function metadata (chunk) {
-    // Segment Information //
-
+  function onMetaData (chunk) {
+    // Segment Information
     if (chunk[1].name === 'TimecodeScale') {
-      timecodeScale = readData(chunk) / 1000000
+      timecodeScale = readElement(chunk[1]) / 1000000
     }
 
-    // Tracks //
-
+    // Tracks
     if (chunk[0] === 'start' && chunk[1].name === 'TrackEntry') {
       currentTrack = {}
     }
@@ -62,7 +62,7 @@ module.exports = function (prevInstance) {
     if (currentTrack && chunk[0] === 'tag') {
       // save info about track currently being scanned
       if (TRACK_ELEMENTS.includes(chunk[1].name)) {
-        currentTrack[chunk[1].name] = readData(chunk)
+        currentTrack[chunk[1].name] = readElement(chunk[1])
       }
     }
 
@@ -87,21 +87,17 @@ module.exports = function (prevInstance) {
     }
 
     if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
-      decoder.removeListener('data', metadata)
-      decoder.on('data', blocks)
+      decoder.removeListener('data', onMetaData)
+      decoder.on('data', onClusterData)
       stream.emit('tracks', Array.from(subtitleTracks.values()))
     }
   }
 
-  function blocks (chunk) {
-    // Clusters //
-
+  function onClusterData (chunk) {
     // TODO: assuming this is a Cluster `Timecode`
     if (chunk[1].name === 'Timecode') {
-      currentClusterTimecode = readData(chunk)
+      currentClusterTimecode = readElement(chunk[1])
     }
-
-    // Blocks //
 
     if (chunk[1].name === 'Block') {
       var block = ebmlBlock(chunk[1].data)
@@ -135,27 +131,11 @@ module.exports = function (prevInstance) {
 
     // TODO: assuming `BlockDuration` exists and always comes after `Block`
     if (currentSubtitleBlock && chunk[1].name === 'BlockDuration') {
-      currentSubtitleBlock[1].duration = readData(chunk) * timecodeScale
+      currentSubtitleBlock[1].duration = readElement(chunk[1]) * timecodeScale
 
       stream.emit('subtitle', currentSubtitleBlock[1], currentSubtitleBlock[0])
 
       currentSubtitleBlock = null
     }
-  }
-}
-
-// TODO: module
-function readData (chunk) {
-  switch (chunk[1].type) {
-    case 'b':
-      return chunk[1].data
-    case 's':
-      return chunk[1].data.toString('ascii')
-    case '8':
-      return chunk[1].data.toString('utf8')
-    case 'u':
-      return chunk[1].data.readUIntBE(0, chunk[1].dataSize)
-    default:
-      console.error('Unsupported data:', chunk)
   }
 }
