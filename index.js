@@ -88,6 +88,9 @@ module.exports = function (prevInstance) {
 
     if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
       decoder.removeListener('data', onMetaData)
+
+      if (subtitleTracks.size <= 0) return stream.end()
+
       decoder.on('data', onClusterData)
       stream.emit('tracks', Array.from(subtitleTracks.values()))
     }
