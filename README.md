@@ -23,19 +23,19 @@ npm install matroska-subtitles
 const fs = require('fs')
 const MatroskaSubtitles = require('matroska-subtitles')
 
-var subtitles = MatroskaSubtitles()
+var parser = new MatroskaSubtitles()
 
-// first an array of subtitle track information is be emitted
-subtitles.once('tracks', function (tracks) {
+// first an array of subtitle track information is emitted
+parser.once('tracks', function (tracks) {
   console.log(tracks)
 })
 
-// afterwards the subtitles are emitted
-subtitles.on('subtitle', function (subtitle, trackNumber) {
+// afterwards each subtitle is emitted
+parser.on('subtitle', function (subtitle, trackNumber) {
   console.log('Track ' + trackNumber + ':', subtitle)
 })
 
-fs.createReadStream('Sintel.2010.720p.mkv').pipe(subtitles)
+fs.createReadStream('Sintel.2010.720p.mkv').pipe(parser)
 ```
 
 ### tracks format
@@ -64,7 +64,7 @@ fs.createReadStream('Sintel.2010.720p.mkv').pipe(subtitles)
 ## random access
 The parser must obtain the `tracks` metadata event before it can begin to emit subtitles.
 To read subtitles from a specific point in the stream,
-you can pass in a previous instance as parameter: `subtitles = MatroskaSubtitles(subtitles)`
+you can pass in a previous instance as parameter: `parser = new MatroskaSubtitles(parser)`
 after the `tracks` event and pipe from a given position. See `examples/random-access.js` for an example.
 
 ## contributing

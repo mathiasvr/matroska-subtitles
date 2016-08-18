@@ -4,7 +4,6 @@ const MatroskaSubtitles = require('..')
 var tracks = new Map()
 var parser = new MatroskaSubtitles()
 
-// first an array of subtitle track information is be emitted
 parser.once('tracks', function (subtitleTracks) {
   subtitleTracks.forEach(function (track) {
     tracks.set(track.number, {
@@ -13,7 +12,6 @@ parser.once('tracks', function (subtitleTracks) {
     })
   })
 
-  // following objects are subtitles
   parser.on('subtitle', function (subtitle, trackNumber) {
     tracks.get(trackNumber).subtitles.push(subtitle)
   })
