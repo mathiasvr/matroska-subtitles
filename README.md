@@ -7,7 +7,7 @@
 [lic-img]: http://img.shields.io/:license-MIT-blue.svg
 [lic-url]: http://mvr.mit-license.org
 
-Transform stream for parsing embedded .mkv subtitles.
+Writable stream for parsing embedded .mkv subtitles.
 
 > Currently supports extraction of the .srt and .ass format.
 
@@ -49,24 +49,23 @@ fs.createReadStream('Sintel.2010.720p.mkv').pipe(subtitles)
 
 > Note that the `language` may be `undefined` if the mkv track doesn't specify it.
 
-### subtitle format (todo)
-
+### subtitle format
 
 ```javascript
 {
   text: 'This blade has a dark past.',
-  time: 107250,
-  duration: 1970
+  time: 107250,  // ms
+  duration: 1970 // ms
 }
 ```
+
+> May also contain additional `.ass` specific values
 
 ## random access
 The parser must obtain the `tracks` metadata event before it can begin to emit subtitles.
 To read subtitles from a specific point in the stream,
 you can pass in a previous instance as parameter: `subtitles = MatroskaSubtitles(subtitles)`
 after the `tracks` event and pipe from a given position. See `examples/random-access.js` for an example.
-
-`time` and `duration` is given in ms.
 
 ## contributing
 
