@@ -1,7 +1,7 @@
 const fs = require('fs')
-const matroskaSubtitles = require('..')
+const MatroskaSubtitles = require('..')
 
-var parser = matroskaSubtitles()
+var parser = new MatroskaSubtitles()
 
 parser.once('tracks', function (tracks) {
   console.log(tracks)
@@ -10,7 +10,7 @@ parser.once('tracks', function (tracks) {
   // parser.end()
 
   // copy track metainfo to a new parser
-  parser = matroskaSubtitles(parser)
+  parser = new MatroskaSubtitles(parser)
 
   parser.on('subtitle', function (subtitle, trackNumber) {
     console.log('track ' + trackNumber + ':', subtitle)

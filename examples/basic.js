@@ -1,7 +1,7 @@
 const fs = require('fs')
 const MatroskaSubtitles = require('..')
 
-var parser = MatroskaSubtitles()
+var parser = new MatroskaSubtitles()
 
 // first an array of subtitle track information is be emitted
 parser.once('tracks', function (tracks) {
