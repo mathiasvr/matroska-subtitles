@@ -6,9 +6,6 @@ var parser = new MatroskaSubtitles()
 parser.once('tracks', function (tracks) {
   console.log(tracks)
 
-  // filestream.unpipe(parser)
-  // parser.end()
-
   // copy track metainfo to a new parser
   parser = new MatroskaSubtitles(parser)
 

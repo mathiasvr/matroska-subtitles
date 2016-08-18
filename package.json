@@ -28,5 +28,8 @@
   "bugs": {
     "url": "https://github.com/mathiasvr/matroska-subtitles/issues"
   },
-  "homepage": "https://github.com/mathiasvr/matroska-subtitles#readme"
+  "homepage": "https://github.com/mathiasvr/matroska-subtitles#readme",
+  "directories": {
+    "example": "examples"
+  }
 }

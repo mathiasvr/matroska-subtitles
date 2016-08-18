@@ -38,7 +38,7 @@ parser.on('subtitle', function (subtitle, trackNumber) {
 fs.createReadStream('Sintel.2010.720p.mkv').pipe(parser)
 ```
 
-### tracks format
+### `tracks` event response format
 
 ```javascript
 [
@@ -49,7 +49,7 @@ fs.createReadStream('Sintel.2010.720p.mkv').pipe(parser)
 
 > Note that the `language` may be `undefined` if the mkv track doesn't specify it.
 
-### subtitle format
+### `subtitle` event response format
 
 ```javascript
 {
@@ -66,12 +66,6 @@ The parser must obtain the `tracks` metadata event before it can begin to emit s
 To read subtitles from a specific point in the stream,
 you can pass in a previous instance as parameter: `parser = new MatroskaSubtitles(parser)`
 after the `tracks` event and pipe from a given position. See `examples/random-access.js` for an example.
-
-## contributing
-
-This is still a work in progress.
-
-If you find a bug or have suggestions feel free to create an issue or a pull request!
 
 ## see also 
 

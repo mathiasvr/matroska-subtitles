@@ -19,6 +19,7 @@ class MatroskaSubtitles extends Writable {
 
     if (prevInstance instanceof MatroskaSubtitles) {
       prevInstance.end()
+      // copy previous metadata
       this.subtitleTracks = prevInstance.subtitleTracks
       this.timecodeScale = prevInstance.timecodeScale
       this.decoder.on('data', _onClusterData)
@@ -90,7 +91,6 @@ class MatroskaSubtitles extends Writable {
         if (self.subtitleTracks.has(block.trackNumber)) {
           var type = self.subtitleTracks.get(block.trackNumber).type
 
-          // TODO: would a subtitle track ever use lacing? We just take the first (only) frame.
           var subtitle = {
             text: block.frames[0].toString('utf8'),
             time: (block.timecode + currentClusterTimecode) * self.timecodeScale
@@ -110,16 +110,15 @@ class MatroskaSubtitles extends Writable {
             }
           }
 
-          // TODO: split?
-          currentSubtitleBlock = [block.trackNumber, subtitle]
+          currentSubtitleBlock = [subtitle, block.trackNumber]
         }
       }
 
       // TODO: assuming `BlockDuration` exists and always comes after `Block`
       if (currentSubtitleBlock && chunk[1].name === 'BlockDuration') {
-        currentSubtitleBlock[1].duration = readElement(chunk[1]) * self.timecodeScale
+        currentSubtitleBlock[0].duration = readElement(chunk[1]) * self.timecodeScale
 
-        self.emit('subtitle', currentSubtitleBlock[1], currentSubtitleBlock[0])
+        self.emit('subtitle', ...currentSubtitleBlock)
 
         currentSubtitleBlock = null
       }
