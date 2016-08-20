@@ -5,6 +5,7 @@ const readElement = require('./lib/read-element')
 
 // track elements we care about
 const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'CodecPrivate']
+const SUBTITLE_TYPES = ['S_TEXT/UTF8', 'S_TEXT/SSA', 'S_TEXT/ASS']
 const ASS_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
 
 class MatroskaSubtitles extends Writable {
@@ -50,14 +51,14 @@ class MatroskaSubtitles extends Writable {
       }
 
       if (chunk[0] === 'end' && chunk[1].name === 'TrackEntry') {
-        // 0x11: Subtitle Track, S_TEXT/UTF8: SRT format
-        if (currentTrack.TrackType === 0x11) {
-          if (currentTrack.CodecID === 'S_TEXT/UTF8' || currentTrack.CodecID === 'S_TEXT/ASS') {
+        if (currentTrack.TrackType === 0x11) { // Subtitle Track
+          if (SUBTITLE_TYPES.includes(currentTrack.CodecID)) {
             var track = {
               number: currentTrack.TrackNumber,
               language: currentTrack.Language,
               type: currentTrack.CodecID.substring(7).toLowerCase()
             }
+
             if (currentTrack.CodecPrivate) {
               // only SSA/ASS
               track.header = currentTrack.CodecPrivate.toString('utf8')
@@ -96,12 +97,12 @@ class MatroskaSubtitles extends Writable {
             time: (block.timecode + currentClusterTimecode) * self.timecodeScale
           }
 
-          if (type === 'ASS') {
-            var i
-            // extract ASS keys
+          if (type === 'ass' || type === 'ssa') {
+            // extract SSA/ASS keys
             var values = subtitle.text.split(',')
-            // ignore read-order
-            for (i = 1; i < 9; i++) {
+            // ignore read-order, and skip layer if ssa
+            var i = type === 'ssa' ? 2 : 1
+            for (; i < 9; i++) {
               subtitle[ASS_KEYS[i]] = values[i]
             }
             // re-append extra text that might have been splitted

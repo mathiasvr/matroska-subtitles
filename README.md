@@ -9,7 +9,7 @@
 
 Writable stream for parsing embedded .mkv subtitles.
 
-> Currently supports extraction of the .srt and .ass format.
+Supported formats: `.srt`, `.ssa`, `.ass`.
 
 ## install
 
@@ -63,7 +63,7 @@ fs.createReadStream('Sintel.2010.720p.mkv').pipe(parser)
 
 ## random access
 The parser must obtain the `tracks` metadata event before it can begin to emit subtitles.
-To read subtitles from a specific point in the stream,
+To read subtitles from a specific position in the stream,
 you can pass in a previous instance as parameter: `parser = new MatroskaSubtitles(parser)`
 after the `tracks` event and pipe from a given position. See `examples/random-access.js` for an example.
 
