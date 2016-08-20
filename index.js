@@ -1,162 +1,134 @@
+const Writable = require('stream').Writable
 const ebml = require('ebml')
 const ebmlBlock = require('ebml-block')
-const through = require('through2')
+const readElement = require('./lib/read-element')
 
 // track elements we care about
 const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'CodecPrivate']
-
 const ASS_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
 
-module.exports = function (prevInstance) {
-  var subtitleTracks = new Map()
-  const decoder = new ebml.Decoder()
+class MatroskaSubtitles extends Writable {
+  constructor (prevInstance) {
+    super()
 
-  var timecodeScale = 1
+    var currentTrack = null
+    var currentSubtitleBlock = null
+    var currentClusterTimecode = null
 
-  var currentTrack // meta
+    this.decoder = new ebml.Decoder()
 
-  var currentSubtitleBlock
-  var currentClusterTimecode
-
-  // TODO: make an actual instance 
-  if (prevInstance && prevInstance._subtitleTracks && prevInstance._timecodeScale) {
-    prevInstance.end()
-    subtitleTracks = prevInstance._subtitleTracks
-    timecodeScale = prevInstance._timecodeScale
-    decoder.on('data', blocks)
-  } else {
-    decoder.on('data', metadata)
-  }
-
-  // object stream
-  var stream = through.obj(transform, flush)
-
-  function transform (chunk, _, callback) {
-    decoder.write(chunk)
-    callback()
-  }
-
-  function flush (callback) {
-    decoder.end()
-    callback()
-  }
-
-  // TODO: refactor, instance
-  stream._timecodeScale = timecodeScale
-  stream._subtitleTracks = subtitleTracks
-
-  return stream
-
-  function metadata (chunk) {
-    // Segment Information //
-
-    if (chunk[1].name === 'TimecodeScale') {
-      timecodeScale = readData(chunk) / 1000000
+    if (prevInstance instanceof MatroskaSubtitles) {
+      prevInstance.end()
+      // copy previous metadata
+      this.subtitleTracks = prevInstance.subtitleTracks
+      this.timecodeScale = prevInstance.timecodeScale
+      this.decoder.on('data', _onClusterData)
+    } else {
+      this.subtitleTracks = new Map()
+      this.timecodeScale = 1
+      this.decoder.on('data', _onMetaData)
     }
 
-    // Tracks //
+    var self = this
 
-    if (chunk[0] === 'start' && chunk[1].name === 'TrackEntry') {
-      currentTrack = {}
-    }
+    function _onMetaData (chunk) {
+      // Segment Information
+      if (chunk[1].name === 'TimecodeScale') {
+        self.timecodeScale = readElement(chunk[1]) / 1000000
+      }
 
-    if (currentTrack && chunk[0] === 'tag') {
-      // save info about track currently being scanned
-      if (TRACK_ELEMENTS.includes(chunk[1].name)) {
-        currentTrack[chunk[1].name] = readData(chunk)
+      // Tracks
+      if (chunk[0] === 'start' && chunk[1].name === 'TrackEntry') {
+        currentTrack = {}
+      }
+
+      if (currentTrack && chunk[0] === 'tag') {
+        // save info about track currently being scanned
+        if (TRACK_ELEMENTS.includes(chunk[1].name)) {
+          currentTrack[chunk[1].name] = readElement(chunk[1])
+        }
+      }
+
+      if (chunk[0] === 'end' && chunk[1].name === 'TrackEntry') {
+        // 0x11: Subtitle Track, S_TEXT/UTF8: SRT format
+        if (currentTrack.TrackType === 0x11) {
+          if (currentTrack.CodecID === 'S_TEXT/UTF8' || currentTrack.CodecID === 'S_TEXT/ASS') {
+            var track = {
+              number: currentTrack.TrackNumber,
+              language: currentTrack.Language,
+              type: currentTrack.CodecID.substring(7).toLowerCase()
+            }
+            if (currentTrack.CodecPrivate) {
+              // only SSA/ASS
+              track.header = currentTrack.CodecPrivate.toString('utf8')
+            }
+
+            self.subtitleTracks.set(currentTrack.TrackNumber, track)
+          }
+        }
+        currentTrack = null
+      }
+
+      if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
+        self.decoder.removeListener('data', _onMetaData)
+
+        if (self.subtitleTracks.size <= 0) return self.end()
+
+        self.decoder.on('data', _onClusterData)
+        self.emit('tracks', Array.from(self.subtitleTracks.values()))
       }
     }
 
-    if (chunk[0] === 'end' && chunk[1].name === 'TrackEntry') {
-      // 0x11: Subtitle Track, S_TEXT/UTF8: SRT format
-      if (currentTrack.TrackType === 0x11) {
-        if (currentTrack.CodecID === 'S_TEXT/UTF8' || currentTrack.CodecID === 'S_TEXT/ASS') {
-          var track = {
-            number: currentTrack.TrackNumber,
-            language: currentTrack.Language,
-            type: currentTrack.CodecID.substring(7)
-          }
-          if (currentTrack.CodecPrivate) {
-            // only SSA/ASS
-            track.header = currentTrack.CodecPrivate.toString('utf8')
+    function _onClusterData (chunk) {
+      // TODO: assuming this is a Cluster `Timecode`
+      if (chunk[1].name === 'Timecode') {
+        currentClusterTimecode = readElement(chunk[1])
+      }
+
+      if (chunk[1].name === 'Block') {
+        var block = ebmlBlock(chunk[1].data)
+
+        if (self.subtitleTracks.has(block.trackNumber)) {
+          var type = self.subtitleTracks.get(block.trackNumber).type
+
+          var subtitle = {
+            text: block.frames[0].toString('utf8'),
+            time: (block.timecode + currentClusterTimecode) * self.timecodeScale
           }
 
-          subtitleTracks.set(currentTrack.TrackNumber, track)
+          if (type === 'ASS') {
+            var i
+            // extract ASS keys
+            var values = subtitle.text.split(',')
+            // ignore read-order
+            for (i = 1; i < 9; i++) {
+              subtitle[ASS_KEYS[i]] = values[i]
+            }
+            // re-append extra text that might have been splitted
+            for (i = 9; i < values.length; i++) {
+              subtitle.text += ',' + values[i]
+            }
+          }
+
+          currentSubtitleBlock = [subtitle, block.trackNumber]
         }
       }
-      currentTrack = null
-    }
 
-    if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
-      decoder.removeListener('data', metadata)
-      decoder.on('data', blocks)
-      stream.push(Array.from(subtitleTracks.values()))
+      // TODO: assuming `BlockDuration` exists and always comes after `Block`
+      if (currentSubtitleBlock && chunk[1].name === 'BlockDuration') {
+        currentSubtitleBlock[0].duration = readElement(chunk[1]) * self.timecodeScale
+
+        self.emit('subtitle', ...currentSubtitleBlock)
+
+        currentSubtitleBlock = null
+      }
     }
   }
 
-  function blocks (chunk) {
-    // Clusters //
-
-    // TODO: assuming this is a Cluster `Timecode`
-    if (chunk[1].name === 'Timecode') {
-      currentClusterTimecode = readData(chunk)
-    }
-
-    // Blocks //
-
-    if (chunk[1].name === 'Block') {
-      var block = ebmlBlock(chunk[1].data)
-
-      if (subtitleTracks.has(block.trackNumber)) {
-        var type = subtitleTracks.get(block.trackNumber).type
-
-        // TODO: would a subtitle track ever use lacing? We just take the first (only) frame.
-        var subtitle = {
-          text: block.frames[0].toString('utf8'),
-          time: (block.timecode + currentClusterTimecode) * timecodeScale
-        }
-
-        if (type === 'ASS') {
-          var i
-          // extract ASS keys
-          var values = subtitle.text.split(',')
-          // ignore read-order
-          for (i = 1; i < 9; i++) {
-            subtitle[ASS_KEYS[i]] = values[i]
-          }
-          // re-append extra text that might have been splitted
-          for (i = 9; i < values.length; i++) {
-            subtitle.text += ',' + values[i]
-          }
-        }
-
-        currentSubtitleBlock = [block.trackNumber, subtitle]
-      }
-    }
-
-    // TODO: assuming `BlockDuration` exists and always comes after `Block`
-    if (currentSubtitleBlock && chunk[1].name === 'BlockDuration') {
-      currentSubtitleBlock[1].duration = readData(chunk) * timecodeScale
-
-      stream.push(currentSubtitleBlock)
-
-      currentSubtitleBlock = null
-    }
+  _write (chunk, _, callback) {
+    this.decoder.write(chunk)
+    callback(null)
   }
 }
 
-// TODO: module
-function readData (chunk) {
-  switch (chunk[1].type) {
-    case 'b':
-      return chunk[1].data
-    case 's':
-      return chunk[1].data.toString('ascii')
-    case '8':
-      return chunk[1].data.toString('utf8')
-    case 'u':
-      return chunk[1].data.readUIntBE(0, chunk[1].dataSize)
-    default:
-      console.error('Unsupported data:', chunk)
-  }
-}
+module.exports = MatroskaSubtitles

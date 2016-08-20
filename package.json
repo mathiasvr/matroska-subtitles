@@ -1,12 +1,11 @@
 {
   "name": "matroska-subtitles",
   "version": "1.1.2",
-  "description": "Transform stream for parsing embedded .mkv subtitles.",
+  "description": "Writable stream for parsing embedded .mkv subtitles.",
   "main": "index.js",
   "dependencies": {
     "ebml": "^2.2.0",
-    "ebml-block": "^1.0.0",
-    "through2": "^2.0.1"
+    "ebml-block": "^1.0.0"
   },
   "devDependencies": {},
   "scripts": {
@@ -29,5 +28,8 @@
   "bugs": {
     "url": "https://github.com/mathiasvr/matroska-subtitles/issues"
   },
-  "homepage": "https://github.com/mathiasvr/matroska-subtitles#readme"
+  "homepage": "https://github.com/mathiasvr/matroska-subtitles#readme",
+  "directories": {
+    "example": "examples"
+  }
 }
