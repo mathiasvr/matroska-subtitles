@@ -42,8 +42,8 @@ fs.createReadStream('Sintel.2010.720p.mkv').pipe(parser)
 
 ```javascript
 [
-  { number: 3, language: 'eng', type: 'UTF8' },
-  { number: 4, language: 'jpn', type: 'ASS', header: '[Script Info]\r\n...' }
+  { number: 3, language: 'eng', type: 'utf8' },
+  { number: 4, language: 'jpn', type: 'ass', header: '[Script Info]\r\n...' }
 ]
 ```
 

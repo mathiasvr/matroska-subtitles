@@ -56,7 +56,7 @@ class MatroskaSubtitles extends Writable {
             var track = {
               number: currentTrack.TrackNumber,
               language: currentTrack.Language,
-              type: currentTrack.CodecID.substring(7)
+              type: currentTrack.CodecID.substring(7).toLowerCase()
             }
             if (currentTrack.CodecPrivate) {
               // only SSA/ASS
