@@ -92,7 +92,7 @@ class MatroskaSubtitles extends Writable {
         if (self.subtitleTracks.has(block.trackNumber)) {
           const type = self.subtitleTracks.get(block.trackNumber).type
 
-          const subtitle = {
+          let subtitle = {
             text: block.frames[0].toString('utf8'),
             time: (block.timecode + currentClusterTimecode) * self.timecodeScale
           }
@@ -101,7 +101,7 @@ class MatroskaSubtitles extends Writable {
             // extract SSA/ASS keys
             const values = subtitle.text.split(',')
             // ignore read-order, and skip layer if ssa
-            const i = type === 'ssa' ? 2 : 1
+            let i = type === 'ssa' ? 2 : 1
             for (; i < 9; i++) {
               subtitle[ASS_KEYS[i]] = values[i]
             }
