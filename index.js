@@ -12,9 +12,9 @@ class MatroskaSubtitles extends Writable {
   constructor (prevInstance) {
     super()
 
-    var currentTrack = null
-    var currentSubtitleBlock = null
-    var currentClusterTimecode = null
+    let currentTrack = null
+    let currentSubtitleBlock = null
+    let currentClusterTimecode = null
 
     this.decoder = new ebml.Decoder()
 
@@ -30,7 +30,7 @@ class MatroskaSubtitles extends Writable {
       this.decoder.on('data', _onMetaData)
     }
 
-    var self = this
+    const self = this
 
     function _onMetaData (chunk) {
       // Segment Information
@@ -53,7 +53,7 @@ class MatroskaSubtitles extends Writable {
       if (chunk[0] === 'end' && chunk[1].name === 'TrackEntry') {
         if (currentTrack.TrackType === 0x11) { // Subtitle Track
           if (SUBTITLE_TYPES.includes(currentTrack.CodecID)) {
-            var track = {
+            const track = {
               number: currentTrack.TrackNumber,
               language: currentTrack.Language,
               type: currentTrack.CodecID.substring(7).toLowerCase()
@@ -87,25 +87,25 @@ class MatroskaSubtitles extends Writable {
       }
 
       if (chunk[1].name === 'Block') {
-        var block = ebmlBlock(chunk[1].data)
+        const block = ebmlBlock(chunk[1].data)
 
         if (self.subtitleTracks.has(block.trackNumber)) {
-          var type = self.subtitleTracks.get(block.trackNumber).type
+          const type = self.subtitleTracks.get(block.trackNumber).type
 
-          var subtitle = {
+          const subtitle = {
             text: block.frames[0].toString('utf8'),
             time: (block.timecode + currentClusterTimecode) * self.timecodeScale
           }
 
           if (type === 'ass' || type === 'ssa') {
             // extract SSA/ASS keys
-            var values = subtitle.text.split(',')
+            const values = subtitle.text.split(',')
             // ignore read-order, and skip layer if ssa
-            var i = type === 'ssa' ? 2 : 1
+            const i = type === 'ssa' ? 2 : 1
             for (; i < 9; i++) {
               subtitle[ASS_KEYS[i]] = values[i]
             }
-            // re-append extra text that might have been splitted
+            // re-append extra text that might have been split
             for (i = 9; i < values.length; i++) {
               subtitle.text += ',' + values[i]
             }
