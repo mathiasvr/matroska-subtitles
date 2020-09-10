@@ -19,7 +19,7 @@ class MatroskaSubtitles extends Writable {
     this.decoder = new ebml.Decoder()
 
     if (prevInstance instanceof MatroskaSubtitles) {
-      prevInstance.end()
+      prevInstance.once('drain', () => prevInstance.end())
       // copy previous metadata
       this.subtitleTracks = prevInstance.subtitleTracks
       this.timecodeScale = prevInstance.timecodeScale
