@@ -1,4 +1,4 @@
-const Writable = require('stream').Writable
+const Transform = require('readable-stream').Transform
 const ebml = require('ebml')
 const ebmlBlock = require('ebml-block')
 const readElement = require('./lib/read-element')
@@ -8,31 +8,92 @@ const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'Code
 const SUBTITLE_TYPES = ['S_TEXT/UTF8', 'S_TEXT/SSA', 'S_TEXT/ASS']
 const ASS_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
 
-class MatroskaSubtitles extends Writable {
-  constructor (prevInstance) {
+class MatroskaSubtitles extends Transform {
+  constructor ({ prevInstance, offset } = {}) {
     super()
 
     let currentTrack = null
     let currentSubtitleBlock = null
     let currentClusterTimecode = null
 
+    let currentSegmentStart = null
+    let currentSeekID = null
+
     this.decoder = new ebml.Decoder()
 
-    if (prevInstance instanceof MatroskaSubtitles) {
+    if (offset !== 0 && prevInstance instanceof MatroskaSubtitles) {
+      if (!offset) throw new Error('no offset')
+
       prevInstance.once('drain', () => prevInstance.end())
+
       // copy previous metadata
       this.subtitleTracks = prevInstance.subtitleTracks
       this.timecodeScale = prevInstance.timecodeScale
-      this.decoder.on('data', _onClusterData)
+      this.cuePositions = prevInstance.cuePositions
+
+      this.cuePositions.sort()
+
+      this.skip = null
+      for (let i = 0; i < this.cuePositions.length; i++) {
+        if (this.cuePositions[i] >= offset) {
+          this.skip = this.cuePositions[i] - offset
+          break
+        }
+      }
+
+      if (this.skip !== null) {
+        this.decoder.on('data', _onMetaData)
+      } else {
+        console.warn('We dont know how to process this :(')
+      }
+
     } else {
       this.subtitleTracks = new Map()
       this.timecodeScale = 1
+      this.cuePositions = []
+
       this.decoder.on('data', _onMetaData)
     }
 
     const self = this
 
+    let waitForNext = false
+
     function _onMetaData (chunk) {
+      if (waitForNext) {
+        waitForNext = false
+        currentSegmentStart = chunk[1].start
+        self.cuePositions = []
+      }
+
+      if (chunk[0] === 'start' && chunk[1].name === 'Segment') {
+        // TODO: only record first segment?
+        // TODO: find a simpler way to do this
+        waitForNext = true
+      }
+
+      if (chunk[1].name === 'SeekID') {
+        // TODO: .value is undefined for some reason?
+        currentSeekID = chunk[1].data
+      }
+
+      if (currentSeekID && chunk[1].name === 'SeekPosition') {
+        if (currentSeekID[0] === 0x1c) { // KaxCues
+          // TODO: correct id handling
+          // hack: this is not a cue position, but the position to the cue data itself,
+          //       in case it's not located at the beginning of the file.
+          self.cuePositions.push(currentSegmentStart + chunk[1].value)
+        }
+      }
+
+      if (chunk[1].name === 'CueClusterPosition') {
+        self.cuePositions.push(currentSegmentStart + chunk[1].value)
+      }
+
+      if (chunk[0] === 'end' && chunk[1].name === 'Cues') {
+        self.emit('cues')
+      }
+
       // Segment Information
       if (chunk[1].name === 'TimecodeScale') {
         self.timecodeScale = readElement(chunk[1]) / 1000000
@@ -71,16 +132,16 @@ class MatroskaSubtitles extends Writable {
       }
 
       if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
-        self.decoder.removeListener('data', _onMetaData)
+        // self.decoder.removeListener('data', _onMetaData)
 
-        if (self.subtitleTracks.size <= 0) return self.end()
+        // if (self.subtitleTracks.size <= 0) return self.end()
 
-        self.decoder.on('data', _onClusterData)
+        // self.decoder.on('data', _onClusterData)
         self.emit('tracks', Array.from(self.subtitleTracks.values()))
       }
-    }
+    // }
 
-    function _onClusterData (chunk) {
+    // function _onClusterData (chunk) {
       // TODO: assuming this is a Cluster `Timecode`
       if (chunk[1].name === 'Timecode') {
         currentClusterTimecode = readElement(chunk[1])
@@ -126,9 +187,23 @@ class MatroskaSubtitles extends Writable {
     }
   }
 
-  _write (chunk, _, callback) {
+  _transform (chunk, _, callback) {
+    if (this.skip) {
+      if (chunk.length <= this.skip) {
+        // skip entire chunk
+        this.skip -= chunk.length
+      } else {
+        // slice chunk
+        const sc = chunk.slice(this.skip)
+        this.skip = 0
+        this.decoder.write(sc)
+      }
+      callback(null, chunk)
+      return
+    }
+
     this.decoder.write(chunk)
-    callback(null)
+    callback(null, chunk)
   }
 }
 
