@@ -41,7 +41,7 @@ class MatroskaSubtitles extends Transform {
       }
 
       if (this.skip !== null) {
-        this.decoder.on('data', _onMetaData)
+        this.decoder.on('data', _onMetaData.bind(this))
       } else {
         console.warn('We dont know how to process this :(')
       }
@@ -50,17 +50,15 @@ class MatroskaSubtitles extends Transform {
       this.subtitleTracks = new Map()
       this.timecodeScale = 1
 
-      this.decoder.on('data', _onMetaData)
+      this.decoder.on('data', _onMetaData.bind(this))
     }
-
-    const self = this
 
     let waitForNext = false
 
     function _onMetaData (chunk) {
       if (waitForNext) {
         waitForNext = false
-        self.cues = { start: chunk[1].start, positions: [] }
+        this.cues = { start: chunk[1].start, positions: [] }
       }
 
       if (chunk[0] === 'start' && chunk[1].name === 'Segment') {
@@ -79,21 +77,21 @@ class MatroskaSubtitles extends Transform {
           // TODO: correct id handling
           // hack: this is not a cue position, but the position to the cue data itself,
           //       in case it's not located at the beginning of the file.
-          self.cues.positions.push(self.cues.start + chunk[1].value)
+          this.cues.positions.push(this.cues.start + chunk[1].value)
         }
       }
 
       if (chunk[1].name === 'CueClusterPosition') {
-        self.cues.positions.push(self.cues.start + chunk[1].value)
+        this.cues.positions.push(this.cues.start + chunk[1].value)
       }
 
       if (chunk[0] === 'end' && chunk[1].name === 'Cues') {
-        self.emit('cues')
+        this.emit('cues')
       }
 
       // Segment Information
       if (chunk[1].name === 'TimecodeScale') {
-        self.timecodeScale = readElement(chunk[1]) / 1000000
+        this.timecodeScale = readElement(chunk[1]) / 1000000
       }
 
       // Tracks
@@ -122,19 +120,19 @@ class MatroskaSubtitles extends Transform {
               track.header = currentTrack.CodecPrivate.toString('utf8')
             }
 
-            self.subtitleTracks.set(currentTrack.TrackNumber, track)
+            this.subtitleTracks.set(currentTrack.TrackNumber, track)
           }
         }
         currentTrack = null
       }
 
       if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
-        // self.decoder.removeListener('data', _onMetaData)
+        // this.decoder.removeListener('data', _onMetaData)
 
-        // if (self.subtitleTracks.size <= 0) return self.end()
+        // if (this.subtitleTracks.size <= 0) return this.end()
 
-        // self.decoder.on('data', _onClusterData)
-        self.emit('tracks', Array.from(self.subtitleTracks.values()))
+        // this.decoder.on('data', _onClusterData)
+        this.emit('tracks', Array.from(this.subtitleTracks.values()))
       }
     // }
 
@@ -147,12 +145,12 @@ class MatroskaSubtitles extends Transform {
       if (chunk[1].name === 'Block') {
         const block = ebmlBlock(chunk[1].data)
 
-        if (self.subtitleTracks.has(block.trackNumber)) {
-          const type = self.subtitleTracks.get(block.trackNumber).type
+        if (this.subtitleTracks.has(block.trackNumber)) {
+          const type = this.subtitleTracks.get(block.trackNumber).type
 
           let subtitle = {
             text: block.frames[0].toString('utf8'),
-            time: (block.timecode + currentClusterTimecode) * self.timecodeScale
+            time: (block.timecode + currentClusterTimecode) * this.timecodeScale
           }
 
           if (type === 'ass' || type === 'ssa') {
@@ -175,9 +173,9 @@ class MatroskaSubtitles extends Transform {
 
       // TODO: assuming `BlockDuration` exists and always comes after `Block`
       if (currentSubtitleBlock && chunk[1].name === 'BlockDuration') {
-        currentSubtitleBlock[0].duration = readElement(chunk[1]) * self.timecodeScale
+        currentSubtitleBlock[0].duration = readElement(chunk[1]) * this.timecodeScale
 
-        self.emit('subtitle', ...currentSubtitleBlock)
+        this.emit('subtitle', ...currentSubtitleBlock)
 
         currentSubtitleBlock = null
       }
