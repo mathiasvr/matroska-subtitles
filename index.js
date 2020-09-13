@@ -16,7 +16,6 @@ class MatroskaSubtitles extends Transform {
     let currentSubtitleBlock = null
     let currentClusterTimecode = null
 
-    let currentSegmentStart = null
     let currentSeekID = null
 
     this.decoder = new ebml.Decoder()
@@ -29,14 +28,14 @@ class MatroskaSubtitles extends Transform {
       // copy previous metadata
       this.subtitleTracks = prevInstance.subtitleTracks
       this.timecodeScale = prevInstance.timecodeScale
-      this.cuePositions = prevInstance.cuePositions
+      this.cues = prevInstance.cues
 
-      this.cuePositions.sort()
+      this.cues.positions.sort()
 
       this.skip = null
-      for (let i = 0; i < this.cuePositions.length; i++) {
-        if (this.cuePositions[i] >= offset) {
-          this.skip = this.cuePositions[i] - offset
+      for (let i = 0; i < this.cues.positions.length; i++) {
+        if (this.cues.positions[i] >= offset) {
+          this.skip = this.cues.positions[i] - offset
           break
         }
       }
@@ -50,7 +49,6 @@ class MatroskaSubtitles extends Transform {
     } else {
       this.subtitleTracks = new Map()
       this.timecodeScale = 1
-      this.cuePositions = []
 
       this.decoder.on('data', _onMetaData)
     }
@@ -62,8 +60,7 @@ class MatroskaSubtitles extends Transform {
     function _onMetaData (chunk) {
       if (waitForNext) {
         waitForNext = false
-        currentSegmentStart = chunk[1].start
-        self.cuePositions = []
+        self.cues = { start: chunk[1].start, positions: [] }
       }
 
       if (chunk[0] === 'start' && chunk[1].name === 'Segment') {
@@ -82,12 +79,12 @@ class MatroskaSubtitles extends Transform {
           // TODO: correct id handling
           // hack: this is not a cue position, but the position to the cue data itself,
           //       in case it's not located at the beginning of the file.
-          self.cuePositions.push(currentSegmentStart + chunk[1].value)
+          self.cues.positions.push(self.cues.start + chunk[1].value)
         }
       }
 
       if (chunk[1].name === 'CueClusterPosition') {
-        self.cuePositions.push(currentSegmentStart + chunk[1].value)
+        self.cues.positions.push(self.cues.start + chunk[1].value)
       }
 
       if (chunk[0] === 'end' && chunk[1].name === 'Cues') {
