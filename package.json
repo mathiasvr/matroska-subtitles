@@ -7,12 +7,13 @@
     "lib"
   ],
   "dependencies": {
-    "ebml": "^3.0.0",
+    "ebml": "github:mathiasvr/node-ebml#browser",
     "ebml-block": "^1.1.2",
     "readable-stream": "^3.6.0"
   },
   "devDependencies": {
-    "dev-null": "^0.1.1"
+    "dev-null": "^0.1.1",
+    "standard": "*"
   },
   "scripts": {
     "test": "standard"

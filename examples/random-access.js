@@ -9,6 +9,8 @@ parser.once('tracks', function (tracks) {
 })
 
 parser.on('cues', function () {
+  parser.end()
+
   const z = 25882901
 
   // copy track metainfo to a new parser

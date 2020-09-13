@@ -20,33 +20,46 @@ class MatroskaSubtitles extends Transform {
 
     this.decoder = new ebml.Decoder()
 
-    if (offset !== 0 && prevInstance instanceof MatroskaSubtitles) {
-      if (!offset) throw new Error('no offset')
+    if (prevInstance instanceof MatroskaSubtitles) {
+      if (offset == null) throw new Error('no offset')
 
-      prevInstance.once('drain', () => prevInstance.end())
+      prevInstance.once('drain', () => {
+        // prevInstance.end()
+        // console.log('prevInstance drain')
+      })
 
       // copy previous metadata
       this.subtitleTracks = prevInstance.subtitleTracks
       this.timecodeScale = prevInstance.timecodeScale
       this.cues = prevInstance.cues
 
-      this.cues.positions.sort()
-
-      this.skip = null
-      for (let i = 0; i < this.cues.positions.length; i++) {
-        if (this.cues.positions[i] >= offset) {
-          this.skip = this.cues.positions[i] - offset
-          break
-        }
+      if (!this.cues) {
+        return console.warn('No cues.')
       }
 
-      if (this.skip !== null) {
+      // find a cue that's close to the file offset
+      // const cueArray = Uint32Array.from(this.cues.positions)
+      // cueArray.sort()
+      const cueArray = Array.from(this.cues.positions)
+      cueArray.sort((a, b) => a - b)
+
+      const closestCue = cueArray.find(i => i >= offset)
+
+      if (closestCue != null) {
+        // prepare to skip file stream until we hit a cue position
+        this.skip = closestCue - offset
+        // set internal decoder position to output consistent file offsets
+        this.decoder.total = closestCue
+
+        // console.log('using cue:', closestCue)
+
         this.decoder.on('data', _onMetaData.bind(this))
       } else {
-        console.warn('We dont know how to process this :(')
+        console.warn(`No cues for offset ${offset}. Subtitle parsing disabled.`)
       }
-
     } else {
+      if (offset) return console.error(`Offset is ${offset}, and must be 0 for initial instance!`)
+
       this.subtitleTracks = new Map()
       this.timecodeScale = 1
 
@@ -58,7 +71,12 @@ class MatroskaSubtitles extends Transform {
     function _onMetaData (chunk) {
       if (waitForNext) {
         waitForNext = false
-        this.cues = { start: chunk[1].start, positions: [] }
+        // Keep cues if this is the same segment
+        if (!this.cues || this.cues.start !== chunk[1].start) {
+          console.log('reset cues', this.cues, chunk[1].start)
+          // Add 0 as a valid cue point
+          this.cues = { start: chunk[1].start, positions: new Set([0]) }
+        }
       }
 
       if (chunk[0] === 'start' && chunk[1].name === 'Segment') {
@@ -77,12 +95,12 @@ class MatroskaSubtitles extends Transform {
           // TODO: correct id handling
           // hack: this is not a cue position, but the position to the cue data itself,
           //       in case it's not located at the beginning of the file.
-          this.cues.positions.push(this.cues.start + chunk[1].value)
+          this.cues.positions.add(this.cues.start + chunk[1].value)
         }
       }
 
       if (chunk[1].name === 'CueClusterPosition') {
-        this.cues.positions.push(this.cues.start + chunk[1].value)
+        this.cues.positions.add(this.cues.start + chunk[1].value)
       }
 
       if (chunk[0] === 'end' && chunk[1].name === 'Cues') {
@@ -134,9 +152,9 @@ class MatroskaSubtitles extends Transform {
         // this.decoder.on('data', _onClusterData)
         this.emit('tracks', Array.from(this.subtitleTracks.values()))
       }
-    // }
+      // }
 
-    // function _onClusterData (chunk) {
+      // function _onClusterData (chunk) {
       // TODO: assuming this is a Cluster `Timecode`
       if (chunk[1].name === 'Timecode') {
         currentClusterTimecode = readElement(chunk[1])
@@ -148,7 +166,7 @@ class MatroskaSubtitles extends Transform {
         if (this.subtitleTracks.has(block.trackNumber)) {
           const type = this.subtitleTracks.get(block.trackNumber).type
 
-          let subtitle = {
+          const subtitle = {
             text: block.frames[0].toString('utf8'),
             time: (block.timecode + currentClusterTimecode) * this.timecodeScale
           }
@@ -184,20 +202,19 @@ class MatroskaSubtitles extends Transform {
 
   _transform (chunk, _, callback) {
     if (this.skip) {
-      if (chunk.length <= this.skip) {
-        // skip entire chunk
-        this.skip -= chunk.length
-      } else {
+      if (this.skip < chunk.length) {
         // slice chunk
         const sc = chunk.slice(this.skip)
         this.skip = 0
         this.decoder.write(sc)
+      } else {
+        // skip entire chunk
+        this.skip -= chunk.length
       }
-      callback(null, chunk)
-      return
+    } else {
+      this.decoder.write(chunk)
     }
 
-    this.decoder.write(chunk)
     callback(null, chunk)
   }
 }
