@@ -20,6 +20,8 @@ class MatroskaSubtitles extends Transform {
 
     let currentSeekID = null
 
+    let waitForNext = false
+
     this.decoder = new ebml.Decoder()
 
     if (prevInstance instanceof MatroskaSubtitles) {
@@ -27,8 +29,18 @@ class MatroskaSubtitles extends Transform {
 
       prevInstance.once('drain', () => {
         // prevInstance.end()
-        // console.log('prevInstance drain')
+        console.log('prevInstance drained')
       })
+
+      if (offset === 0) {
+        // just begin normal parsing
+        this.subtitleTracks = prevInstance.subtitleTracks || new Map()
+        this.timecodeScale = prevInstance.timecodeScale || 1
+        this.cues = prevInstance.cues
+
+        this.decoder.on('data', _onMetaData.bind(this))
+        return
+      }
 
       // copy previous metadata
       this.subtitleTracks = prevInstance.subtitleTracks
@@ -36,7 +48,8 @@ class MatroskaSubtitles extends Transform {
       this.cues = prevInstance.cues
 
       if (!this.cues) {
-        return console.warn('No cues.')
+        this.decoder = null
+        return console.warn('No cues was parsed. Subtitle parsing disabled.')
       }
 
       // find a cue that's close to the file offset
@@ -57,10 +70,15 @@ class MatroskaSubtitles extends Transform {
 
         this.decoder.on('data', _onMetaData.bind(this))
       } else {
+        this.decoder = null
         console.warn(`No cues for offset ${offset}. Subtitle parsing disabled.`)
       }
     } else {
-      if (offset) return console.error(`Offset is ${offset}, and must be 0 for initial instance!`)
+      if (offset) {
+        this.decoder = null
+        console.error(`Offset is ${offset}, and must be 0 for initial instance. Subtitle parsing disabled.`)
+        return
+      }
 
       this.subtitleTracks = new Map()
       this.timecodeScale = 1
@@ -68,15 +86,12 @@ class MatroskaSubtitles extends Transform {
       this.decoder.on('data', _onMetaData.bind(this))
     }
 
-    let waitForNext = false
-
     function _onMetaData (chunk) {
       if (waitForNext) {
         waitForNext = false
         // Keep cues if this is the same segment
         if (!this.cues || this.cues.start !== chunk[1].start) {
-          // Add 0 as a valid cue point
-          this.cues = { start: chunk[1].start, positions: new Set([0]) }
+          this.cues = { start: chunk[1].start, positions: new Set() }
         }
       }
 
@@ -201,6 +216,8 @@ class MatroskaSubtitles extends Transform {
   }
 
   _transform (chunk, _, callback) {
+    if (!this.decoder) return callback(null, chunk)
+
     if (this.skip) {
       // skip bytes to reach cue position
       if (this.skip < chunk.length) {
