@@ -8,6 +8,8 @@ const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'Code
 const SUBTITLE_TYPES = ['S_TEXT/UTF8', 'S_TEXT/SSA', 'S_TEXT/ASS']
 const ASS_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
 
+const CUES_ID = Buffer.from('1C53BB6B', 'hex')
+
 class MatroskaSubtitles extends Transform {
   constructor ({ prevInstance, offset } = {}) {
     super()
@@ -73,7 +75,6 @@ class MatroskaSubtitles extends Transform {
         waitForNext = false
         // Keep cues if this is the same segment
         if (!this.cues || this.cues.start !== chunk[1].start) {
-          console.log('reset cues', this.cues, chunk[1].start)
           // Add 0 as a valid cue point
           this.cues = { start: chunk[1].start, positions: new Set([0]) }
         }
@@ -91,8 +92,7 @@ class MatroskaSubtitles extends Transform {
       }
 
       if (currentSeekID && chunk[1].name === 'SeekPosition') {
-        if (currentSeekID[0] === 0x1c) { // KaxCues
-          // TODO: correct id handling
+        if (CUES_ID.equals(currentSeekID)) {
           // hack: this is not a cue position, but the position to the cue data itself,
           //       in case it's not located at the beginning of the file.
           this.cues.positions.add(this.cues.start + chunk[1].value)
@@ -202,6 +202,7 @@ class MatroskaSubtitles extends Transform {
 
   _transform (chunk, _, callback) {
     if (this.skip) {
+      // skip bytes to reach cue position
       if (this.skip < chunk.length) {
         // slice chunk
         const sc = chunk.slice(this.skip)
