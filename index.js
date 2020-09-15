@@ -90,8 +90,13 @@ class MatroskaSubtitles extends Transform {
       if (waitForNext) {
         waitForNext = false
         // Keep cues if this is the same segment
-        if (!this.cues || this.cues.start !== chunk[1].start) {
+        if (!this.cues) {
           this.cues = { start: chunk[1].start, positions: new Set() }
+        } else if (this.cues.start !== chunk[1].start) {
+          this.cues = { start: chunk[1].start, positions: new Set() }
+          console.warn('New segment found - resetting cues! Not sure we can handle this!?')
+        } else {
+          console.info('Saw first segment again. Keeping cues.')
         }
       }
 
@@ -107,11 +112,12 @@ class MatroskaSubtitles extends Transform {
       }
 
       if (currentSeekID && chunk[1].name === 'SeekPosition') {
-        if (CUES_ID.equals(currentSeekID)) {
+        //if (CUES_ID.equals(currentSeekID)) {
           // hack: this is not a cue position, but the position to the cue data itself,
           //       in case it's not located at the beginning of the file.
+          // actually, just add all seek positions.
           this.cues.positions.add(this.cues.start + chunk[1].value)
-        }
+        //}
       }
 
       if (chunk[1].name === 'CueClusterPosition') {
