@@ -8,11 +8,15 @@ const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'Code
 const SUBTITLE_TYPES = ['S_TEXT/UTF8', 'S_TEXT/SSA', 'S_TEXT/ASS']
 const ASS_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
 
-const CUES_ID = Buffer.from('1C53BB6B', 'hex')
+// const CUES_ID = Buffer.from('1C53BB6B', 'hex')
 
 class MatroskaSubtitles extends Transform {
   constructor ({ prevInstance, offset } = {}) {
     super()
+
+    this.id = (Math.random() * 10000) | 0
+    this.offset = offset
+    this.bcount = 0
 
     let currentTrack = null
     let currentSubtitleBlock = null
@@ -22,14 +26,24 @@ class MatroskaSubtitles extends Transform {
 
     let waitForNext = false
 
+    this.on('close', () => {
+      console.log('CLOSED:', this.id)
+    });
+
+    this.on('finish', () => {
+      console.log('FINISH:', this.id)
+    });
+
     this.decoder = new ebml.Decoder()
 
     if (prevInstance instanceof MatroskaSubtitles) {
       if (offset == null) throw new Error('no offset')
 
+      if (prevInstance.decoder) console.log(`prevInstance id=${prevInstance.id}: decoder t=${prevInstance.decoder.total}, c=${prevInstance.decoder.cursor}`)
+
       prevInstance.once('drain', () => {
+        console.log(`prevInstancee id=${prevInstance.id}: drained`)
         // prevInstance.end()
-        console.log('prevInstance drained')
       })
 
       if (offset === 0) {
@@ -49,9 +63,18 @@ class MatroskaSubtitles extends Transform {
 
       if (!this.cues) {
         this.decoder = null
+        // TODO: AVOID THIS! - we can actually add seek points without the segment start (decoder.total), but this would cause problems later
         return console.warn('No cues was parsed. Subtitle parsing disabled.')
       }
 
+      // TODO: should always be the case, but we currently allow some slack (initial instance not at z=0)
+      if (prevInstance.decoder) {
+        // use the position of the previous decoder as a valid seek point
+        // this can help if offset is changed before parsing seeks and cues
+        const decoderPosition = prevInstance.decoder.total - prevInstance.decoder.cursor
+        this.cues.positions.add(decoderPosition)
+      }
+        
       // find a cue that's close to the file offset
       // const cueArray = Uint32Array.from(this.cues.positions)
       // cueArray.sort()
@@ -222,9 +245,18 @@ class MatroskaSubtitles extends Transform {
   }
 
   _transform (chunk, _, callback) {
-    if (!this.decoder) return callback(null, chunk)
+    console.log(`Write id=${this.id}: z=${this.offset}, l=${chunk.length}, skip=${this.skip} pos=${(this.offset || 0) + this.bcount}`)
+    this.bcount += chunk.length
+
+    if (!this.decoder) {
+      console.warn('Skipped decoder')
+      return callback(null, chunk)
+    }
 
     if (this.skip) {
+      if (this.skip > 1048576 * 20) {
+        console.warn(this.id, 'High skip value... This is bad.')
+      }
       // skip bytes to reach cue position
       if (this.skip < chunk.length) {
         // slice chunk
