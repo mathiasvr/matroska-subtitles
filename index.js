@@ -8,8 +8,6 @@ const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'Code
 const SUBTITLE_TYPES = ['S_TEXT/UTF8', 'S_TEXT/SSA', 'S_TEXT/ASS']
 const ASS_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
 
-// const CUES_ID = Buffer.from('1C53BB6B', 'hex')
-
 class MatroskaSubtitles extends Transform {
   constructor ({ prevInstance, offset } = {}) {
     super()
@@ -22,25 +20,23 @@ class MatroskaSubtitles extends Transform {
     let currentSubtitleBlock = null
     let currentClusterTimecode = null
 
-    let currentSeekID = null
-
     this.on('close', () => {
-      console.log('CLOSED:', this.id)
-    });
+      console.debug('CLOSED:', this.id)
+    })
 
     this.on('finish', () => {
-      console.log('FINISH:', this.id)
-    });
+      console.debug('FINISH:', this.id)
+    })
 
     this.decoder = new ebml.Decoder()
 
     if (prevInstance instanceof MatroskaSubtitles) {
       if (offset == null) throw new Error('no offset')
 
-      if (prevInstance.decoder) console.log(`prevInstance id=${prevInstance.id}: decoder t=${prevInstance.decoder.total}, c=${prevInstance.decoder.cursor}`)
+      if (prevInstance.decoder) console.debug(`prevInstance id=${prevInstance.id}: decoder t=${prevInstance.decoder.total}, c=${prevInstance.decoder.cursor}`)
 
       prevInstance.once('drain', () => {
-        console.log(`prevInstancee id=${prevInstance.id}: drained`)
+        console.debug(`prevInstance id=${prevInstance.id}: drained`)
         // prevInstance.end()
       })
 
@@ -48,7 +44,8 @@ class MatroskaSubtitles extends Transform {
         // just begin normal parsing
         this.subtitleTracks = prevInstance.subtitleTracks || new Map()
         this.timecodeScale = prevInstance.timecodeScale || 1
-        this.cues = prevInstance.cues
+        this.segmentStart = prevInstance.segmentStart
+        this.seekPositions = prevInstance.seekPositions
 
         this.decoder.on('data', _onMetaData.bind(this))
         return
@@ -57,37 +54,35 @@ class MatroskaSubtitles extends Transform {
       // copy previous metadata
       this.subtitleTracks = prevInstance.subtitleTracks
       this.timecodeScale = prevInstance.timecodeScale
-      this.cues = prevInstance.cues
-
-      if (!this.cues) {
-        this.decoder = null
-        // TODO: AVOID THIS! - we can actually add seek points without the segment start (decoder.total), but this would cause problems later
-        return console.warn('No cues was parsed. Subtitle parsing disabled.')
-      }
+      this.segmentStart = prevInstance.segmentStart
+      this.seekPositions = prevInstance.seekPositions
 
       // TODO: should always be the case, but we currently allow some slack (initial instance not at z=0)
       if (prevInstance.decoder) {
         // use the position of the previous decoder as a valid seek point
         // this can help if offset is changed before parsing seeks and cues
         const decoderPosition = prevInstance.decoder.total - prevInstance.decoder.cursor
-        this.cues.positions.add(decoderPosition)
+        this.seekPositions.add(decoderPosition)
       }
-        
+
+      if (this.seekPositions.length === 0) {
+        this.decoder = null
+        return console.warn('No cues was parsed. Subtitle parsing disabled.')
+      }
+
       // find a cue that's close to the file offset
-      // const cueArray = Uint32Array.from(this.cues.positions)
-      // cueArray.sort()
-      const cueArray = Array.from(this.cues.positions)
-      cueArray.sort((a, b) => a - b)
+      // const seeksSorted = Uint32Array.from(this.seekPositions)
+      // seeksSorted.sort()
+      const seeksSorted = Array.from(this.seekPositions)
+      seeksSorted.sort((a, b) => a - b)
 
-      const closestCue = cueArray.find(i => i >= offset)
+      const closestSeek = seeksSorted.find(i => i >= offset)
 
-      if (closestCue != null) {
+      if (closestSeek != null) {
         // prepare to skip file stream until we hit a cue position
-        this.skip = closestCue - offset
+        this.skip = closestSeek - offset
         // set internal decoder position to output consistent file offsets
-        this.decoder.total = closestCue
-
-        // console.log('using cue:', closestCue)
+        this.decoder.total = closestSeek
 
         this.decoder.on('data', _onMetaData.bind(this))
       } else {
@@ -103,41 +98,29 @@ class MatroskaSubtitles extends Transform {
 
       this.subtitleTracks = new Map()
       this.timecodeScale = 1
+      this.segmentStart = null
+      this.seekPositions = new Set()
 
       this.decoder.on('data', _onMetaData.bind(this))
     }
 
     function _onMetaData (chunk) {
       if (chunk[0] === 'start' && chunk[1].name === 'Segment') {
-         // beginning of segment (next tag)
+        // beginning of segment (next tag)
         const segStart = this.decoder.total
-        // Keep cues if this is the same segment
-        if (!this.cues) {
-          this.cues = { start: segStart, positions: new Set() }
-        } else if (this.cues.start !== segStart) {
-          this.cues = { start: segStart, positions: new Set() }
-          console.warn('New segment found - resetting cues! Not sure we can handle this!?')
-        } else {
-          console.info('Saw first segment again. Keeping cues.')
+
+        if (this.segmentStart != null && this.segmentStart !== segStart) {
+          // we don't really support multiple segments...
+          this.seekPositions = new Set()
+          console.warn('New segment found, this could be a problem!')
         }
+
+        this.segmentStart = segStart
       }
 
-      if (chunk[1].name === 'SeekID') {
-        // TODO: .value is undefined for some reason?
-        currentSeekID = chunk[1].data
-      }
-
-      if (currentSeekID && chunk[1].name === 'SeekPosition') {
-        //if (CUES_ID.equals(currentSeekID)) {
-          // hack: this is not a cue position, but the position to the cue data itself,
-          //       in case it's not located at the beginning of the file.
-          // actually, just add all seek positions.
-          this.cues.positions.add(this.cues.start + chunk[1].value)
-        //}
-      }
-
-      if (chunk[1].name === 'CueClusterPosition') {
-        this.cues.positions.add(this.cues.start + chunk[1].value)
+      if (chunk[1].name === 'SeekPosition' || chunk[1].name === 'CueClusterPosition') {
+        // save all seek and cue positions
+        this.seekPositions.add(this.segmentStart + chunk[1].value)
       }
 
       if (chunk[0] === 'end' && chunk[1].name === 'Cues') {
@@ -238,17 +221,16 @@ class MatroskaSubtitles extends Transform {
   }
 
   _transform (chunk, _, callback) {
-    console.log(`Write id=${this.id}: z=${this.offset}, l=${chunk.length}, skip=${this.skip} pos=${(this.offset || 0) + this.bcount}`)
+    console.debug(`Write id=${this.id}: z=${this.offset}, l=${chunk.length}, skip=${this.skip} pos=${(this.offset || 0) + this.bcount}`)
     this.bcount += chunk.length
 
     if (!this.decoder) {
-      console.warn('Skipped decoder')
       return callback(null, chunk)
     }
 
     if (this.skip) {
       if (this.skip > 1048576 * 20) {
-        console.warn(this.id, 'High skip value... This is bad.')
+        console.warn(this.id, 'Subtitle parsing stalled.')
       }
       // skip bytes to reach cue position
       if (this.skip < chunk.length) {
