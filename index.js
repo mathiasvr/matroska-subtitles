@@ -24,8 +24,6 @@ class MatroskaSubtitles extends Transform {
 
     let currentSeekID = null
 
-    let waitForNext = false
-
     this.on('close', () => {
       console.log('CLOSED:', this.id)
     });
@@ -110,23 +108,18 @@ class MatroskaSubtitles extends Transform {
     }
 
     function _onMetaData (chunk) {
-      if (waitForNext) {
-        waitForNext = false
+      if (chunk[0] === 'start' && chunk[1].name === 'Segment') {
+         // beginning of segment (next tag)
+        const segStart = this.decoder.total
         // Keep cues if this is the same segment
         if (!this.cues) {
-          this.cues = { start: chunk[1].start, positions: new Set() }
-        } else if (this.cues.start !== chunk[1].start) {
-          this.cues = { start: chunk[1].start, positions: new Set() }
+          this.cues = { start: segStart, positions: new Set() }
+        } else if (this.cues.start !== segStart) {
+          this.cues = { start: segStart, positions: new Set() }
           console.warn('New segment found - resetting cues! Not sure we can handle this!?')
         } else {
           console.info('Saw first segment again. Keeping cues.')
         }
-      }
-
-      if (chunk[0] === 'start' && chunk[1].name === 'Segment') {
-        // TODO: only record first segment?
-        // TODO: find a simpler way to do this
-        waitForNext = true
       }
 
       if (chunk[1].name === 'SeekID') {
