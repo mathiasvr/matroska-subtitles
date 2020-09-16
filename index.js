@@ -1,5 +1,7 @@
-const Transform = require('readable-stream').Transform
-const ebml = require('ebml')
+const { Transform } = require('readable-stream')
+// TODO: full path to node source to avoid webpack issues with ebml@3.0.0 'browser' tag
+//       https://github.com/node-ebml/node-ebml/pull/113
+const ebml = require('ebml/lib/ebml')
 const ebmlBlock = require('ebml-block')
 const readElement = require('./lib/read-element')
 
@@ -221,6 +223,8 @@ class MatroskaSubtitles extends Transform {
   }
 
   _transform (chunk, _, callback) {
+    // passthrough stream, data is intercepted but not transformed
+
     console.debug(`Write id=${this.id}: z=${this.offset}, l=${chunk.length}, skip=${this.skip} pos=${(this.offset || 0) + this.bcount}`)
     this.bcount += chunk.length
 

@@ -7,7 +7,7 @@
     "lib"
   ],
   "dependencies": {
-    "ebml": "github:mathiasvr/node-ebml#browser",
+    "ebml": "^3.0.0",
     "ebml-block": "^1.1.2",
     "readable-stream": "^3.6.0"
   },
@@ -37,6 +37,7 @@
   },
   "homepage": "https://github.com/mathiasvr/matroska-subtitles#readme",
   "directories": {
-    "example": "examples"
+    "example": "examples",
+    "lib": "lib"
   }
 }
