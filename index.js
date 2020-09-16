@@ -14,33 +14,16 @@ class MatroskaSubtitles extends Transform {
   constructor ({ prevInstance, offset } = {}) {
     super()
 
-    this.id = (Math.random() * 10000) | 0
-    this.offset = offset
-    this.bcount = 0
-
     let currentTrack = null
     let currentSubtitleBlock = null
     let currentClusterTimecode = null
-
-    this.on('close', () => {
-      console.debug('CLOSED:', this.id)
-    })
-
-    this.on('finish', () => {
-      console.debug('FINISH:', this.id)
-    })
 
     this.decoder = new ebml.Decoder()
 
     if (prevInstance instanceof MatroskaSubtitles) {
       if (offset == null) throw new Error('no offset')
 
-      if (prevInstance.decoder) console.debug(`prevInstance id=${prevInstance.id}: decoder t=${prevInstance.decoder.total}, c=${prevInstance.decoder.cursor}`)
-
-      prevInstance.once('drain', () => {
-        console.debug(`prevInstance id=${prevInstance.id}: drained`)
-        // prevInstance.end()
-      })
+      prevInstance.once('drain', () => prevInstance.end())
 
       if (offset === 0) {
         // just begin normal parsing
@@ -167,17 +150,12 @@ class MatroskaSubtitles extends Transform {
       }
 
       if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
-        // this.decoder.removeListener('data', _onMetaData)
-
         // if (this.subtitleTracks.size <= 0) return this.end()
 
-        // this.decoder.on('data', _onClusterData)
         this.emit('tracks', Array.from(this.subtitleTracks.values()))
       }
-      // }
 
-      // function _onClusterData (chunk) {
-      // TODO: assuming this is a Cluster `Timecode`
+      // Assumption: This is a Cluster `Timecode`
       if (chunk[1].name === 'Timecode') {
         currentClusterTimecode = readElement(chunk[1])
       }
@@ -211,7 +189,7 @@ class MatroskaSubtitles extends Transform {
         }
       }
 
-      // TODO: assuming `BlockDuration` exists and always comes after `Block`
+      // Assumption: `BlockDuration` exists and always comes after `Block`
       if (currentSubtitleBlock && chunk[1].name === 'BlockDuration') {
         currentSubtitleBlock[0].duration = readElement(chunk[1]) * this.timecodeScale
 
@@ -224,16 +202,13 @@ class MatroskaSubtitles extends Transform {
 
   _transform (chunk, _, callback) {
     // passthrough stream, data is intercepted but not transformed
-
-    console.debug(`Write id=${this.id}: z=${this.offset}, l=${chunk.length}, skip=${this.skip} pos=${(this.offset || 0) + this.bcount}`)
-    this.bcount += chunk.length
-
     if (!this.decoder) {
       return callback(null, chunk)
     }
 
     if (this.skip) {
-      if (this.skip > 1048576 * 20) {
+      if (this.skip > 20000000) {
+        // TODO: remove after further testing
         console.warn(this.id, 'Subtitle parsing stalled.')
       }
       // skip bytes to reach cue position
