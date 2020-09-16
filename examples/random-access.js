@@ -1,20 +1,20 @@
 const fs = require('fs')
 const devnull = require('dev-null')
-const MatroskaSubtitles = require('..')
+const { SeekableSubtitleParser } = require('..')
 
-var parser = new MatroskaSubtitles()
+var parser = new SeekableSubtitleParser()
 
 parser.once('tracks', function (tracks) {
   console.log(tracks)
 })
 
 parser.on('cues', function () {
-  parser.end()
+  // parser.end()
 
   const z = 25882901
 
   // copy track metainfo to a new parser
-  parser = new MatroskaSubtitles({ prevInstance: parser, offset: z })
+  parser = new SeekableSubtitleParser({ prevInstance: parser, offset: z })
 
   parser.on('subtitle', function (subtitle, trackNumber) {
     console.log('track ' + trackNumber + ':', subtitle)

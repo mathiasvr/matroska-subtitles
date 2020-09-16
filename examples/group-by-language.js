@@ -1,8 +1,8 @@
 const fs = require('fs')
-const MatroskaSubtitles = require('..')
+const { SubtitleParser } = require('..')
 
 var tracks = new Map()
-var parser = new MatroskaSubtitles()
+var parser = new SubtitleParser()
 
 parser.once('tracks', function (subtitleTracks) {
   subtitleTracks.forEach(function (track) {
