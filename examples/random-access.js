@@ -1,28 +1,31 @@
 const fs = require('fs')
 const devnull = require('dev-null')
-const { SeekableSubtitleParser } = require('..')
+const { SubtitleStream } = require('..')
 
-var parser = new SeekableSubtitleParser()
+// SubtitleStream acts as middleware for intercepting subtitles in existing mkv streams,
+// and implements seeking support by logging seek and cue positions
+const subtitleStream = new SubtitleStream()
 
-parser.once('tracks', function (tracks) {
+subtitleStream.once('tracks', function (tracks) {
   console.log(tracks)
 })
 
-parser.on('cues', function () {
-  const z = 25882901
+subtitleStream.on('cues', function () {
+  const offset = 25882901
 
-  // copy track metainfo to a new parser
-  parser = parser.seekTo(z)
+  // .seekTo closes the old subtitle stream and opens a new at a given offset
+  subtitleStream = subtitleStream.seekTo(offset)
 
-  parser.on('subtitle', function (subtitle, trackNumber) {
+  subtitleStream.on('subtitle', function (subtitle, trackNumber) {
     console.log('track ' + trackNumber + ':', subtitle)
   })
 
   // create a new stream and read from a specific position
-  fs.createReadStream(null, { fd: filestream.fd, start: z }).pipe(parser).pipe(devnull())
+  fs.createReadStream(null, { fd: filestream.fd, start: offset }).pipe(subtitleStream).pipe(devnull())
 })
 
 // create a stream starting from the beginning of the file
-var filestream = fs.createReadStream(process.argv[2])
+const filestream = fs.createReadStream(process.argv[2])
 
-filestream.pipe(parser).pipe(devnull())
+// initial subtitle stream instance should start at stream offset 0
+filestream.pipe(subtitleStream).pipe(devnull())
