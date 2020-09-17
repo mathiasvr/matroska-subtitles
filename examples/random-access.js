@@ -4,7 +4,7 @@ const { SubtitleStream } = require('..')
 
 // SubtitleStream acts as middleware for intercepting subtitles in existing mkv streams,
 // and implements seeking support by logging seek and cue positions
-const subtitleStream = new SubtitleStream()
+let subtitleStream = new SubtitleStream()
 
 subtitleStream.once('tracks', function (tracks) {
   console.log(tracks)

@@ -1,8 +1,8 @@
 const fs = require('fs')
 const { SubtitleParser } = require('..')
 
-var tracks = new Map()
-var parser = new SubtitleParser()
+const tracks = new Map()
+const parser = new SubtitleParser()
 
 parser.once('tracks', function (subtitleTracks) {
   subtitleTracks.forEach(function (track) {

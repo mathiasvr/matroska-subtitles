@@ -13,17 +13,17 @@ Supported formats: `.srt`, `.ssa`, `.ass`.
 
 ## install
 
-```bash
-npm install matroska-subtitles
+```shell
+$ npm install matroska-subtitles
 ```
 
 ## example
 
 ```javascript
 const fs = require('fs')
-const MatroskaSubtitles = require('matroska-subtitles')
+const { SubtitleParser } = require('matroska-subtitles')
 
-var parser = new MatroskaSubtitles()
+const parser = new SubtitleParser()
 
 // first an array of subtitle track information is emitted
 parser.once('tracks', function (tracks) {
@@ -49,7 +49,7 @@ See [examples](https://github.com/mathiasvr/matroska-subtitles/tree/master/examp
 ]
 ```
 
-> Note that the `language` may be `undefined` if the mkv track doesn't specify it.
+> The `language` attribute can be `undefined` if the mkv track does not specify it.
 
 ### `subtitle` event response format
 
@@ -61,13 +61,17 @@ See [examples](https://github.com/mathiasvr/matroska-subtitles/tree/master/examp
 }
 ```
 
-> May also contain additional `.ass` specific values
-
 ## random access
-The parser must obtain the `tracks` metadata event before it can begin to emit subtitles.
-To read subtitles from a specific position in the stream,
-you can pass in a previous instance as parameter: `parser = new MatroskaSubtitles(parser)`
-after the `tracks` event and pipe from a given position. See [examples/random-access.js](https://github.com/mathiasvr/matroska-subtitles/blob/master/examples/random-access.js) for an example.
+This module also includes a `SubtitleStream` class that acts as middleware for intercepting subtitles
+in existing mkv streams and implements seeking support based on mkv seek and cue positions.
+
+```js
+const { SubtitleStream } = require('..')
+
+let subtitleStream = new SubtitleStream()
+```
+
+See [examples/random-access.js](https://github.com/mathiasvr/matroska-subtitles/blob/master/examples/random-access.js) for an example.
 
 ## see also 
 
