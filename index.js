@@ -129,82 +129,70 @@ class SubtitleParser extends SubtitleParserBase {
 
 
 class SeekableSubtitleParser extends SubtitleParserBase {
-  constructor ({ prevInstance, offset } = {}) {
+  constructor () {
     super()
 
     this.segmentStart = null
     this.seekPositions = new Set()
 
-    if (prevInstance instanceof SeekableSubtitleParser) {
-      if (offset == null) throw new Error('no offset')
-
-      prevInstance.once('drain', () => prevInstance.end())
-
-      if (offset === 0) {
-        // just begin normal parsing
-        this.subtitleTracks = prevInstance.subtitleTracks
-        this.timecodeScale = prevInstance.timecodeScale
-        this.segmentStart = prevInstance.segmentStart
-        this.seekPositions = prevInstance.seekPositions
-
-        this.decoder = new ebml.Decoder()
-        this.decoder.on('data', this._seekstuff)
-    
-        return
-      }
-
-      // copy previous metadata
-      this.subtitleTracks = prevInstance.subtitleTracks
-      this.timecodeScale = prevInstance.timecodeScale
-      this.segmentStart = prevInstance.segmentStart
-      this.seekPositions = prevInstance.seekPositions
-
-      // TODO: should always be the case, but we currently allow some slack (initial instance not at z=0)
-      if (prevInstance.decoder) {
-        // use the position of the previous decoder as a valid seek point
-        // this can help if offset is changed before parsing seeks and cues
-        const decoderPosition = prevInstance.decoder.total - prevInstance.decoder.cursor
-        this.seekPositions.add(decoderPosition)
-      }
-
-      if (this.seekPositions.length === 0) {
-        //this.decoder = null
-        return console.warn('No cues was parsed. Subtitle parsing disabled.')
-      }
-
-      // find a cue that's close to the file offset
-      // const seeksSorted = Uint32Array.from(this.seekPositions)
-      // seeksSorted.sort()
-      const seeksSorted = Array.from(this.seekPositions)
-      seeksSorted.sort((a, b) => a - b)
-
-      const closestSeek = seeksSorted.find(i => i >= offset)
-
-      if (closestSeek != null) {
-        this.decoder = new ebml.Decoder()
-        this.decoder.on('data', this._seekstuff)
-    
-        // prepare to skip file stream until we hit a cue position
-        this.skip = closestSeek - offset
-        // set internal decoder position to output consistent file offsets
-        this.decoder.total = closestSeek
-
-      } else {
-        console.warn(`No cues for offset ${offset}. Subtitle parsing disabled.`)
-      }
-    } else {
-
-      if (offset) {
-        console.error(`Offset is ${offset}, and must be 0 for initial instance. Subtitle parsing disabled.`)
-        return
-      }
-
-      this.decoder = new ebml.Decoder()
-      this.decoder.on('data', this._seekstuff)
-    }
+    this.decoder = new ebml.Decoder()
+    this.decoder.on('data', this._interceptSeeksAndParse)
   }
-  
-  _seekstuff = (chunk) => {
+
+  // returns new parser stream at offset
+  seekTo (offset) {
+    if (offset == null) throw new Error('Must supply offset to seek to')
+    
+    this.once('drain', () => this.end())
+
+    const newParser = new SeekableSubtitleParser()
+
+    // copy previous metadata
+    newParser.subtitleTracks = this.subtitleTracks
+    newParser.timecodeScale = this.timecodeScale
+    newParser.segmentStart = this.segmentStart
+    newParser.seekPositions = this.seekPositions
+
+    if (offset === 0) {
+      // begin parsing from beginning of video
+      return newParser
+    }
+
+    if (this.decoder) {
+      // use the position of the previous decoder as a valid seek point
+      // this can help if offset is changed before parsing seeks and cues
+      const decoderPosition = this.decoder.total - this.decoder.cursor
+      newParser.seekPositions.add(decoderPosition)
+    }
+
+    if (newParser.seekPositions.length === 0) {
+      console.warn('No cues was parsed. Subtitle parsing disabled.')
+      newParser.decoder = null
+      return newParser
+    }
+
+    // find a cue that's close to the file offset
+    // const seeksSorted = Uint32Array.from(newParser.seekPositions)
+    // seeksSorted.sort()
+    const seeksSorted = Array.from(newParser.seekPositions)
+    seeksSorted.sort((a, b) => a - b)
+
+    const closestSeek = seeksSorted.find(i => i >= offset)
+
+    if (closestSeek != null) {
+      // prepare to skip file stream until we hit a cue position
+      newParser.skip = closestSeek - offset
+      // set internal decoder position to output consistent file offsets
+      newParser.decoder.total = closestSeek
+    } else {
+      console.warn(`No cues for offset ${offset}. Subtitle parsing disabled.`)
+      this.decoder = null
+    }
+
+    return newParser
+  }
+
+  _interceptSeeksAndParse = (chunk) => {
     if (chunk[0] === 'start' && chunk[1].name === 'Segment') {
       // beginning of segment (next tag)
       const segStart = this.decoder.total

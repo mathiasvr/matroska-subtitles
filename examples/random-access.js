@@ -9,12 +9,10 @@ parser.once('tracks', function (tracks) {
 })
 
 parser.on('cues', function () {
-  // parser.end()
-
   const z = 25882901
 
   // copy track metainfo to a new parser
-  parser = new SeekableSubtitleParser({ prevInstance: parser, offset: z })
+  parser = parser.seekTo(z)
 
   parser.on('subtitle', function (subtitle, trackNumber) {
     console.log('track ' + trackNumber + ':', subtitle)
