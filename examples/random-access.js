@@ -8,9 +8,7 @@ let subtitleStream = new SubtitleStream()
 
 subtitleStream.once('tracks', function (tracks) {
   console.log(tracks)
-})
 
-subtitleStream.on('cues', function () {
   const offset = 25882901
 
   // .seekTo closes the old subtitle stream and opens a new at a given offset
