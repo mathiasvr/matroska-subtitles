@@ -10,8 +10,8 @@ subtitleStream.once('tracks', function (tracks) {
 
   const offset = 25882901
 
-  // .seekTo closes the old subtitle stream and opens a new at a given offset
-  subtitleStream = subtitleStream.seekTo(offset)
+  // close the old subtitle stream and open a new to parse at a different stream offset
+  subtitleStream = new SubtitleStream(subtitleStream)
 
   subtitleStream.on('subtitle', function (subtitle, trackNumber) {
     console.log('track ' + trackNumber + ':', subtitle)
