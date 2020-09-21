@@ -1,13 +1,11 @@
-# matroska-subtitles [![npm][npm-img]][npm-url] [![dependencies][dep-img]][dep-url] [![license][lic-img]][lic-url]
+# matroska-subtitles
 
-[npm-img]: https://img.shields.io/npm/v/matroska-subtitles.svg
-[npm-url]: https://www.npmjs.com/package/matroska-subtitles
-[dep-img]: https://david-dm.org/mathiasvr/matroska-subtitles.svg
-[dep-url]: https://david-dm.org/mathiasvr/matroska-subtitles
-[lic-img]: http://img.shields.io/:license-MIT-blue.svg
-[lic-url]: http://mvr.mit-license.org
+[![npm](https://img.shields.io/npm/v/matroska-subtitles.svg)](https://npm.im/matroska-subtitles)
+![downloads](https://img.shields.io/npm/dt/matroska-subtitles.svg)
+[![dependencies](https://david-dm.org/mathiasvr/matroska-subtitles.svg)](https://david-dm.org/mathiasvr/matroska-subtitles)
+[![license](https://img.shields.io/:license-MIT-blue.svg)](https://mvr.mit-license.org)
 
-Writable stream for parsing embedded .mkv subtitles.
+Streaming parser for embedded .mkv subtitles.
 
 Supported formats: `.srt`, `.ssa`, `.ass`.
 
@@ -15,6 +13,11 @@ Supported formats: `.srt`, `.ssa`, `.ass`.
 
 ```shell
 $ npm install matroska-subtitles
+```
+
+or include it directly:
+```html
+<script src="https://unpkg.com/matroska-subtitles@3.0.0"></script>
 ```
 
 ## example
@@ -26,14 +29,12 @@ const { SubtitleParser } = require('matroska-subtitles')
 const parser = new SubtitleParser()
 
 // first an array of subtitle track information is emitted
-parser.once('tracks', function (tracks) {
-  console.log(tracks)
-})
+parser.once('tracks', (tracks) => console.log(tracks))
 
 // afterwards each subtitle is emitted
-parser.on('subtitle', function (subtitle, trackNumber) {
-  console.log('Track ' + trackNumber + ':', subtitle)
-})
+parser.on('subtitle', (subtitle, trackNumber) =>
+  console.log('Track ' + trackNumber + ':', subtitle))
+
 
 fs.createReadStream('Sintel.2010.720p.mkv').pipe(parser)
 ```
@@ -62,20 +63,24 @@ See [examples](https://github.com/mathiasvr/matroska-subtitles/tree/master/examp
 ```
 
 ## random access
-This module also includes a `SubtitleStream` class that acts as middleware for intercepting subtitles
-in existing mkv streams and implements seeking support based on mkv seek and cue positions.
+This module also includes a `SubtitleStream` class for intercepting subtitles
+in mkv streams with support for seeking.
 
 ```js
-const { SubtitleStream } = require('..')
+const { SubtitleStream } = require('matroska-subtitles')
 
 let subtitleStream = new SubtitleStream()
+
+subtitleStream.once('tracks', (tracks) => {
+  // seek to different stream offset
+})
 ```
 
-See [examples/random-access.js](https://github.com/mathiasvr/matroska-subtitles/blob/master/examples/random-access.js) for an example.
+See [examples/random-access.js](examples/random-access.js) for a detailed example.
 
 ## see also 
 
-[mkv-subtitle-extractor](https://www.npmjs.com/package/mkv-subtitle-extractor)
+[mkv-subtitle-extractor](https://npm.im/mkv-subtitle-extractor)
 
 ## license
 

@@ -5,7 +5,7 @@ const { SubtitleStream } = require('..')
 // SubtitleStream intercepts subtitles in an mkv stream and implements seeking support
 let subtitleStream = new SubtitleStream()
 
-subtitleStream.once('tracks', function (tracks) {
+subtitleStream.once('tracks', (tracks) => {
   console.log(tracks)
 
   const offset = 25882901
@@ -13,9 +13,8 @@ subtitleStream.once('tracks', function (tracks) {
   // close the old subtitle stream and open a new to parse at a different stream offset
   subtitleStream = new SubtitleStream(subtitleStream)
 
-  subtitleStream.on('subtitle', function (subtitle, trackNumber) {
-    console.log('track ' + trackNumber + ':', subtitle)
-  })
+  subtitleStream.on('subtitle', (subtitle, trackNumber) =>
+    console.log('track ' + trackNumber + ':', subtitle))
 
   // create a new stream and read from a specific position
   fs.createReadStream(null, { fd: filestream.fd, start: offset }).pipe(subtitleStream).pipe(devnull())
