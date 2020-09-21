@@ -1,9 +1,9 @@
-const SubtitleParserBase = require('./subtitle-parser-base')
+import { SubtitleParserBase } from './subtitle-parser-base'
 // TODO: full path to node source to avoid webpack issues with ebml@3.0.0 'browser' tag
 //       https://github.com/node-ebml/node-ebml/pull/113
-const ebml = require('ebml/lib/ebml')
+import { Decoder } from 'ebml/lib/ebml'
 
-class SubtitleStream extends SubtitleParserBase {
+export class SubtitleStream extends SubtitleParserBase {
   constructor (prevInstance) {
     super()
 
@@ -18,7 +18,7 @@ class SubtitleStream extends SubtitleParserBase {
       this.unstable = true
     }
 
-    this.decoder = new ebml.Decoder()
+    this.decoder = new Decoder()
     this.decoder.on('data', this._parseEbmlSubtitles.bind(this))
   }
 
@@ -46,5 +46,3 @@ class SubtitleStream extends SubtitleParserBase {
     callback(null, chunk)
   }
 }
-
-module.exports = SubtitleStream

@@ -1,6 +1,6 @@
 const millennium = Date.UTC(2001, 0)
 
-module.exports = function (tag) {
+export function readElement (tag) {
   switch (tag.type) {
     case 's': return tag.data.toString('ascii')
     case '8': return tag.data.toString('utf8')

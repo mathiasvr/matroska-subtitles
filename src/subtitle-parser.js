@@ -1,9 +1,9 @@
-const SubtitleParserBase = require('./subtitle-parser-base')
+import { SubtitleParserBase } from './subtitle-parser-base'
 // TODO: full path to node source to avoid webpack issues with ebml@3.0.0 'browser' tag
 //       https://github.com/node-ebml/node-ebml/pull/113
-const ebml = require('ebml/lib/ebml')
+import ebml from 'ebml/lib/ebml'
 
-class SubtitleParser extends SubtitleParserBase {
+export class SubtitleParser extends SubtitleParserBase {
   constructor () {
     super()
 
@@ -21,5 +21,3 @@ class SubtitleParser extends SubtitleParserBase {
     callback(null, chunk)
   }
 }
-
-module.exports = SubtitleParser
