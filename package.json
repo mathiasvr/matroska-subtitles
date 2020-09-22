@@ -17,7 +17,7 @@
     "standard": "*"
   },
   "scripts": {
-    "test": "standard",
+    "test": "standard && node tests/test.js",
     "build": "microbundle --name=MatroskaSubtitles",
     "prepare": "npm run build",
     "prepublishOnly": "npm test"
