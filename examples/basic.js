@@ -1,16 +1,13 @@
 const fs = require('fs')
-const MatroskaSubtitles = require('..')
+const { SubtitleParser } = require('..')
 
-var parser = new MatroskaSubtitles()
+const parser = new SubtitleParser()
 
 // first an array of subtitle track information is emitted
-parser.once('tracks', function (tracks) {
-  console.log(tracks)
-})
+parser.once('tracks', (tracks) => console.log(tracks))
 
 // afterwards each subtitle is emitted
-parser.on('subtitle', function (subtitle, trackNumber) {
-  console.log('Track ' + trackNumber + ':', subtitle)
-})
+parser.on('subtitle', (subtitle, trackNumber) =>
+  console.log('Track ' + trackNumber + ':', subtitle))
 
 fs.createReadStream(process.argv[2]).pipe(parser)

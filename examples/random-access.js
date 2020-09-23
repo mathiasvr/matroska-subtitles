@@ -1,23 +1,27 @@
 const fs = require('fs')
-const MatroskaSubtitles = require('..')
+const devnull = require('dev-null')
+const { SubtitleStream } = require('..')
 
-var parser = new MatroskaSubtitles()
+// SubtitleStream intercepts subtitles in an mkv stream and implements seeking support
+let subtitleStream = new SubtitleStream()
 
-parser.once('tracks', function (tracks) {
+subtitleStream.once('tracks', (tracks) => {
   console.log(tracks)
 
-  // copy track metainfo to a new parser
-  parser = new MatroskaSubtitles(parser)
+  const offset = 25882901
 
-  parser.on('subtitle', function (subtitle, trackNumber) {
-    console.log('track ' + trackNumber + ':', subtitle)
-  })
+  // close the old subtitle stream and open a new to parse at a different stream offset
+  subtitleStream = new SubtitleStream(subtitleStream)
+
+  subtitleStream.on('subtitle', (subtitle, trackNumber) =>
+    console.log('track ' + trackNumber + ':', subtitle))
 
   // create a new stream and read from a specific position
-  fs.createReadStream(null, { fd: filestream.fd, start: 29737907 }).pipe(parser)
+  fs.createReadStream(null, { fd: filestream.fd, start: offset }).pipe(subtitleStream).pipe(devnull())
 })
 
 // create a stream starting from the beginning of the file
-var filestream = fs.createReadStream(process.argv[2])
+const filestream = fs.createReadStream(process.argv[2])
 
-filestream.pipe(parser)
+// initial subtitle stream instance should start at stream offset 0
+filestream.pipe(subtitleStream).pipe(devnull())

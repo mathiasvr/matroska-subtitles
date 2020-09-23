@@ -1,41 +1,27 @@
-const Writable = require('stream').Writable
-const ebml = require('ebml')
-const ebmlBlock = require('ebml-block')
-const readElement = require('./lib/read-element')
+import { Transform } from 'readable-stream'
+import ebmlBlock from 'ebml-block'
+import { readElement } from './read-element'
 
 // track elements we care about
 const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'CodecPrivate']
 const SUBTITLE_TYPES = ['S_TEXT/UTF8', 'S_TEXT/SSA', 'S_TEXT/ASS']
 const ASS_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
 
-class MatroskaSubtitles extends Writable {
-  constructor (prevInstance) {
+export class SubtitleParserBase extends Transform {
+  constructor () {
     super()
 
     let currentTrack = null
     let currentSubtitleBlock = null
     let currentClusterTimecode = null
 
-    this.decoder = new ebml.Decoder()
+    this.subtitleTracks = new Map()
+    this.timecodeScale = 1
 
-    if (prevInstance instanceof MatroskaSubtitles) {
-      prevInstance.once('drain', () => prevInstance.end())
-      // copy previous metadata
-      this.subtitleTracks = prevInstance.subtitleTracks
-      this.timecodeScale = prevInstance.timecodeScale
-      this.decoder.on('data', _onClusterData)
-    } else {
-      this.subtitleTracks = new Map()
-      this.timecodeScale = 1
-      this.decoder.on('data', _onMetaData)
-    }
-
-    const self = this
-
-    function _onMetaData (chunk) {
+    this._parseEbmlSubtitles = (chunk) => {
       // Segment Information
       if (chunk[1].name === 'TimecodeScale') {
-        self.timecodeScale = readElement(chunk[1]) / 1000000
+        this.timecodeScale = readElement(chunk[1]) / 1000000
       }
 
       // Tracks
@@ -64,24 +50,17 @@ class MatroskaSubtitles extends Writable {
               track.header = currentTrack.CodecPrivate.toString('utf8')
             }
 
-            self.subtitleTracks.set(currentTrack.TrackNumber, track)
+            this.subtitleTracks.set(currentTrack.TrackNumber, track)
           }
         }
         currentTrack = null
       }
 
       if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
-        self.decoder.removeListener('data', _onMetaData)
-
-        if (self.subtitleTracks.size <= 0) return self.end()
-
-        self.decoder.on('data', _onClusterData)
-        self.emit('tracks', Array.from(self.subtitleTracks.values()))
+        this.emit('tracks', Array.from(this.subtitleTracks.values()))
       }
-    }
 
-    function _onClusterData (chunk) {
-      // TODO: assuming this is a Cluster `Timecode`
+      // Assumption: This is a Cluster `Timecode`
       if (chunk[1].name === 'Timecode') {
         currentClusterTimecode = readElement(chunk[1])
       }
@@ -89,12 +68,12 @@ class MatroskaSubtitles extends Writable {
       if (chunk[1].name === 'Block') {
         const block = ebmlBlock(chunk[1].data)
 
-        if (self.subtitleTracks.has(block.trackNumber)) {
-          const type = self.subtitleTracks.get(block.trackNumber).type
+        if (this.subtitleTracks.has(block.trackNumber)) {
+          const type = this.subtitleTracks.get(block.trackNumber).type
 
-          let subtitle = {
+          const subtitle = {
             text: block.frames[0].toString('utf8'),
-            time: (block.timecode + currentClusterTimecode) * self.timecodeScale
+            time: (block.timecode + currentClusterTimecode) * this.timecodeScale
           }
 
           if (type === 'ass' || type === 'ssa') {
@@ -115,21 +94,14 @@ class MatroskaSubtitles extends Writable {
         }
       }
 
-      // TODO: assuming `BlockDuration` exists and always comes after `Block`
+      // Assumption: `BlockDuration` exists and always comes after `Block`
       if (currentSubtitleBlock && chunk[1].name === 'BlockDuration') {
-        currentSubtitleBlock[0].duration = readElement(chunk[1]) * self.timecodeScale
+        currentSubtitleBlock[0].duration = readElement(chunk[1]) * this.timecodeScale
 
-        self.emit('subtitle', ...currentSubtitleBlock)
+        this.emit('subtitle', ...currentSubtitleBlock)
 
         currentSubtitleBlock = null
       }
     }
   }
-
-  _write (chunk, _, callback) {
-    this.decoder.write(chunk)
-    callback(null)
-  }
 }
-
-module.exports = MatroskaSubtitles

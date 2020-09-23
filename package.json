@@ -1,18 +1,26 @@
 {
   "name": "matroska-subtitles",
   "version": "2.0.4",
-  "description": "Writable stream for parsing embedded .mkv subtitles.",
-  "main": "index.js",
-  "files": [
-    "lib"
-  ],
+  "description": "Streaming parser for embedded .mkv subtitles.",
+  "source": "src/index.js",
+  "main": "dist/matroska-subtitles.js",
+  "module": "dist/matroska-subtitles.module.js",
+  "unpkg": "dist/matroska-subtitles.umd.js",
   "dependencies": {
-    "ebml": "^2.2.0",
-    "ebml-block": "^1.1.0"
+    "ebml": "^3.0.0",
+    "ebml-block": "^1.1.2",
+    "readable-stream": "^3.6.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "dev-null": "^0.1.1",
+    "microbundle": "^0.12.3",
+    "standard": "*"
+  },
   "scripts": {
-    "test": "standard"
+    "test": "standard && node tests/test.js",
+    "build": "microbundle --name=MatroskaSubtitles",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test"
   },
   "keywords": [
     "mkv",
@@ -34,5 +42,8 @@
   "homepage": "https://github.com/mathiasvr/matroska-subtitles#readme",
   "directories": {
     "example": "examples"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }
