@@ -15,11 +15,6 @@ Supported formats: `.srt`, `.ssa`, `.ass`.
 $ npm install matroska-subtitles
 ```
 
-or include it directly:
-```html
-<script src="https://unpkg.com/matroska-subtitles@3.0.0"></script>
-```
-
 ## example
 
 ```javascript

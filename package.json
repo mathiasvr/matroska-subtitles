@@ -5,7 +5,6 @@
   "source": "src/index.js",
   "main": "dist/matroska-subtitles.js",
   "module": "dist/matroska-subtitles.module.js",
-  "unpkg": "dist/matroska-subtitles.umd.js",
   "dependencies": {
     "ebml": "^3.0.0",
     "ebml-block": "^1.1.2",
@@ -41,7 +40,8 @@
   },
   "homepage": "https://github.com/mathiasvr/matroska-subtitles#readme",
   "directories": {
-    "example": "examples"
+    "example": "examples",
+    "test": "tests"
   },
   "files": [
     "dist"
