@@ -13,11 +13,13 @@
   "devDependencies": {
     "dev-null": "^0.1.1",
     "microbundle": "^0.12.3",
-    "standard": "*"
+    "standard": "*",
+    "terser": "^5.3.2"
   },
   "scripts": {
     "test": "standard && node tests/test.js",
-    "build": "microbundle --name=MatroskaSubtitles",
+    "build": "microbundle --name=MatroskaSubtitles && npm run bundle",
+    "bundle": "browserify --standalone MatroskaSubtitles . | terser --compress --mangle > dist/matroska-subtitles.min.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm test"
   },

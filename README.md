@@ -15,6 +15,11 @@ Supported formats: `.srt`, `.ssa`, `.ass`.
 $ npm install matroska-subtitles
 ```
 
+or include it directly:
+```html
+<script src="https://cdn.jsdelivr.net/npm/matroska-subtitles@3.0.1/dist/matroska-subtitles.min.js"></script>
+```
+
 ## example
 
 ```javascript
