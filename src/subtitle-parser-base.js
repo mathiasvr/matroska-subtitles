@@ -3,7 +3,7 @@ import ebmlBlock from 'ebml-block'
 import { readElement } from './read-element'
 
 // track elements we care about
-const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'CodecPrivate']
+const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'CodecPrivate', 'Name']
 const SUBTITLE_TYPES = ['S_TEXT/UTF8', 'S_TEXT/SSA', 'S_TEXT/ASS']
 const ASS_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
 
@@ -43,6 +43,10 @@ export class SubtitleParserBase extends Transform {
               number: currentTrack.TrackNumber,
               language: currentTrack.Language,
               type: currentTrack.CodecID.substring(7).toLowerCase()
+            }
+
+            if (currentTrack.Name) {
+              track.name = currentTrack.Name.toString('utf8')
             }
 
             if (currentTrack.CodecPrivate) {
