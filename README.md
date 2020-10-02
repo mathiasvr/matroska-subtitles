@@ -17,7 +17,7 @@ $ npm install matroska-subtitles
 
 or include it directly:
 ```html
-<script src="https://cdn.jsdelivr.net/npm/matroska-subtitles@3.0.1/dist/matroska-subtitles.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/matroska-subtitles@3.1.0/dist/matroska-subtitles.min.js"></script>
 ```
 
 ## example
@@ -45,12 +45,13 @@ See [examples](https://github.com/mathiasvr/matroska-subtitles/tree/master/examp
 
 ```javascript
 [
-  { number: 3, language: 'eng', type: 'utf8' },
+  { number: 3, language: 'eng', type: 'utf8', name: 'English(US)' },
   { number: 4, language: 'jpn', type: 'ass', header: '[Script Info]\r\n...' }
 ]
 ```
 
-> The `language` attribute can be `undefined` if the mkv track does not specify it.
+- The `language` attribute can be `undefined` if the mkv track does not specify it, this is often interpreted as `eng`.
+- The `name` attribute is not standard but may provide language info.
 
 ### `subtitle` event response format
 
