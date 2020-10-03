@@ -3,9 +3,9 @@ import ebmlBlock from 'ebml-block'
 import { readElement } from './read-element'
 
 // track elements we care about
-const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'CodecPrivate', 'Name']
+const TRACK_ELEMENTS = new Set(['TrackNumber', 'TrackType', 'Language', 'CodecID', 'CodecPrivate', 'Name'])
 
-const SSA_TYPES = ['ssa', 'ass']
+const SSA_TYPES = new Set(['ssa', 'ass'])
 const SSA_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
 
 export class SubtitleParserBase extends Transform {
@@ -32,7 +32,7 @@ export class SubtitleParserBase extends Transform {
 
       if (currentTrack && chunk[0] === 'tag') {
         // save info about track currently being scanned
-        if (TRACK_ELEMENTS.includes(chunk[1].name)) {
+        if (TRACK_ELEMENTS.has(chunk[1].name)) {
           currentTrack[chunk[1].name] = readElement(chunk[1])
         }
       }
@@ -51,7 +51,7 @@ export class SubtitleParserBase extends Transform {
               track.name = currentTrack.Name.toString('utf8')
             }
 
-            if (currentTrack.CodecPrivate && SSA_TYPES.includes(track.type)) {
+            if (currentTrack.CodecPrivate && SSA_TYPES.has(track.type)) {
               track.header = currentTrack.CodecPrivate.toString('utf8')
             }
 
@@ -81,7 +81,7 @@ export class SubtitleParserBase extends Transform {
             time: (block.timecode + currentClusterTimecode) * this.timecodeScale
           }
 
-          if (SSA_TYPES.includes(type)) {
+          if (SSA_TYPES.has(type)) {
             // extract SSA/ASS keys
             const values = subtitle.text.split(',')
             // ignore read-order, and skip layer if ssa
