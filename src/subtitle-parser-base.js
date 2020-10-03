@@ -4,8 +4,9 @@ import { readElement } from './read-element'
 
 // track elements we care about
 const TRACK_ELEMENTS = ['TrackNumber', 'TrackType', 'Language', 'CodecID', 'CodecPrivate', 'Name']
-const SUBTITLE_TYPES = ['S_TEXT/UTF8', 'S_TEXT/SSA', 'S_TEXT/ASS']
-const ASS_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
+
+const SSA_TYPES = ['ssa', 'ass']
+const SSA_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
 
 export class SubtitleParserBase extends Transform {
   constructor () {
@@ -37,8 +38,9 @@ export class SubtitleParserBase extends Transform {
       }
 
       if (chunk[0] === 'end' && chunk[1].name === 'TrackEntry') {
-        if (currentTrack.TrackType === 0x11) { // Subtitle Track
-          if (SUBTITLE_TYPES.includes(currentTrack.CodecID)) {
+        // Subtitle Track
+        if (currentTrack.TrackType === 0x11) {
+          if (currentTrack.CodecID.startsWith('S_TEXT')) {
             const track = {
               number: currentTrack.TrackNumber,
               language: currentTrack.Language,
@@ -49,8 +51,7 @@ export class SubtitleParserBase extends Transform {
               track.name = currentTrack.Name.toString('utf8')
             }
 
-            if (currentTrack.CodecPrivate) {
-              // only SSA/ASS
+            if (currentTrack.CodecPrivate && SSA_TYPES.includes(track.type)) {
               track.header = currentTrack.CodecPrivate.toString('utf8')
             }
 
@@ -80,13 +81,13 @@ export class SubtitleParserBase extends Transform {
             time: (block.timecode + currentClusterTimecode) * this.timecodeScale
           }
 
-          if (type === 'ass' || type === 'ssa') {
+          if (SSA_TYPES.includes(type)) {
             // extract SSA/ASS keys
             const values = subtitle.text.split(',')
             // ignore read-order, and skip layer if ssa
             let i = type === 'ssa' ? 2 : 1
             for (; i < 9; i++) {
-              subtitle[ASS_KEYS[i]] = values[i]
+              subtitle[SSA_KEYS[i]] = values[i]
             }
             // re-append extra text that might have been split
             for (i = 9; i < values.length; i++) {
