@@ -12,15 +12,17 @@
   },
   "devDependencies": {
     "dev-null": "^0.1.1",
-    "microbundle": "^0.12.3",
+    "microbundle": "^0.12.4",
     "standard": "*",
-    "terser": "^5.3.2"
+    "terser": "^5.3.4",
+    "wzrd": "^1.5.0"
   },
   "scripts": {
     "test": "standard && node tests/test.js",
-    "build": "microbundle --name=MatroskaSubtitles && npm run bundle",
-    "bundle": "browserify --standalone MatroskaSubtitles . | terser --compress --mangle > dist/matroska-subtitles.min.js",
-    "prepare": "npm run build",
+    "build": "microbundle --name=MatroskaSubtitles",
+    "bundle": "browserify --standalone MatroskaSubtitles . | terser --compress --mangle --source-map --output=dist/matroska-subtitles.min.js",
+    "web": "wzrd examples/web.js",
+    "prepare": "npm run build && npm run bundle",
     "prepublishOnly": "npm test"
   },
   "keywords": [
