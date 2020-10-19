@@ -20,7 +20,7 @@
   "scripts": {
     "test": "standard && node tests/test.js",
     "build": "microbundle --name=MatroskaSubtitles",
-    "bundle": "browserify --standalone MatroskaSubtitles . | terser --compress --mangle --source-map --output=dist/matroska-subtitles.min.js",
+    "bundle": "browserify --standalone MatroskaSubtitles . | terser --compress --source-map --output=dist/matroska-subtitles.min.js",
     "web": "wzrd examples/web.js",
     "prepare": "npm run build && npm run bundle",
     "prepublishOnly": "npm test"
