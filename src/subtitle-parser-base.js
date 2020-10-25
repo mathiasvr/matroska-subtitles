@@ -16,6 +16,8 @@ export class SubtitleParserBase extends Transform {
     let currentSubtitleBlock = null
     let currentClusterTimecode = null
 
+    let currentAttachedFile = null
+
     this.subtitleTracks = new Map()
     this.timecodeScale = 1
 
@@ -106,6 +108,26 @@ export class SubtitleParserBase extends Transform {
         this.emit('subtitle', ...currentSubtitleBlock)
 
         currentSubtitleBlock = null
+      }
+
+      // Parse attached files, mainly to allow extracting subtitle font files.
+      if (chunk[1].name === 'AttachedFile') {
+        if (chunk[0] === 'start') {
+          currentAttachedFile = {}
+        } else if (chunk[0] === 'end') {
+          this.emit('file', currentAttachedFile)
+          currentAttachedFile = null
+        }
+      }
+
+      if (currentAttachedFile) {
+        if (chunk[1].name === 'FileName') {
+          currentAttachedFile.filename = readElement(chunk[1])
+        } else if (chunk[1].name === 'FileMimeType') {
+          currentAttachedFile.mimetype = readElement(chunk[1])
+        } else if (chunk[1].name === 'FileData') {
+          currentAttachedFile.data = readElement(chunk[1])
+        }
       }
     }
   }
