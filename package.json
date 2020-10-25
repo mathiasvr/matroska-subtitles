@@ -14,7 +14,7 @@
     "dev-null": "^0.1.1",
     "microbundle": "^0.12.4",
     "standard": "*",
-    "terser": "^5.3.4",
+    "terser": "^5.3.8",
     "wzrd": "^1.5.0"
   },
   "scripts": {
