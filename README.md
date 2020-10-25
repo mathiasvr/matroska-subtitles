@@ -63,6 +63,21 @@ See [examples](https://github.com/mathiasvr/matroska-subtitles/tree/master/examp
 }
 ```
 
+## attached files
+The parser now also has a `file` event that emits embedded mkv files, mainly to be used to extract embedded subtitle fonts.
+
+```js
+parser.on('file', file => console.log('file:', file))
+```
+Output:
+```js
+{
+  filename: 'Arial.ttf',
+  mimetype: 'application/x-truetype-font',
+  data: Buffer() [Uint8Array]
+}
+```
+
 ## random access
 This module also includes a `SubtitleStream` class for intercepting subtitles
 in mkv streams with support for seeking.
