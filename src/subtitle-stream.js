@@ -1,7 +1,4 @@
 import { SubtitleParserBase } from './subtitle-parser-base'
-// TODO: full path to node source to avoid webpack issues with ebml@3.0.0 'browser' tag
-//       https://github.com/node-ebml/node-ebml/pull/113
-import { Decoder } from 'ebml/lib/ebml'
 
 export class SubtitleStream extends SubtitleParserBase {
   constructor (prevInstance) {
@@ -17,9 +14,6 @@ export class SubtitleStream extends SubtitleParserBase {
       // may not be at ebml tag offset
       this.unstable = true
     }
-
-    this.decoder = new Decoder()
-    this.decoder.on('data', this._parseEbmlSubtitles.bind(this))
   }
 
   // passthrough stream: data is intercepted but not transformed
