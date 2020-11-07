@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Matroska Subtitles</title>
+  <script src="../../dist/matroska-subtitles.min.js"></script>
+  <script src="stream-http.min.js"></script>
+  <script>
+    console.log(MatroskaSubtitles)
+    const parser = new MatroskaSubtitles.SubtitleParser()
+
+    // first an array of subtitle track information is emitted
+    parser.once('tracks', (tracks) => console.log(tracks))
+
+    // afterwards each subtitle is emitted
+    parser.on('subtitle', (subtitle, trackNumber) =>
+      console.log('Track ' + trackNumber + ':', subtitle))
+
+    parser.on('file', file => console.log('file:', file))
+
+    httpStream.get('../../tests/matroska-test-files/test_files/test5.mkv', res => {
+      res.pipe(parser)
+    })
+  </script>
+</head>
+<body>
+
+</body>
+</html>

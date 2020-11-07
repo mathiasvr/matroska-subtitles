@@ -23,7 +23,6 @@
     "test": "standard && node tests/test.js",
     "build": "microbundle --name=MatroskaSubtitles",
     "bundle": "webpack",
-    "web": "npx wzrd examples/web.js",
     "prepare": "npm run build && npm run bundle",
     "prepublishOnly": "npm test"
   },
