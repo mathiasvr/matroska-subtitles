@@ -10,17 +10,20 @@
     "readable-stream": "^3.6.0"
   },
   "devDependencies": {
+    "buffer": "^6.0.1",
     "dev-null": "^0.1.1",
     "microbundle": "^0.12.4",
+    "process": "^0.11.10",
     "standard": "*",
-    "terser": "^5.3.8",
-    "wzrd": "^1.5.0"
+    "stream-browserify": "^3.0.0",
+    "webpack": "^5.4.0",
+    "webpack-cli": "^4.2.0"
   },
   "scripts": {
     "test": "standard && node tests/test.js",
     "build": "microbundle --name=MatroskaSubtitles",
-    "bundle": "browserify --standalone MatroskaSubtitles . | terser --compress --source-map --output=dist/matroska-subtitles.min.js",
-    "web": "wzrd examples/web.js",
+    "bundle": "webpack",
+    "web": "npx wzrd examples/web.js",
     "prepare": "npm run build && npm run bundle",
     "prepublishOnly": "npm test"
   },
