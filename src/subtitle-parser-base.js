@@ -9,14 +9,14 @@ function getData (chunk, id) {
   return el ? el.data : undefined
 }
 
-let currentClusterTimecode = null
-
 export class SubtitleParserBase extends Transform {
   constructor () {
     super()
 
     this.subtitleTracks = new Map()
     this.timecodeScale = 1
+
+    this._currentClusterTimecode = null
 
     this.decoder = new EbmlStreamDecoder({
       bufferTagIds: [
@@ -38,7 +38,7 @@ export class SubtitleParserBase extends Transform {
 
     // Assumption: This is a Cluster `Timecode`
     if (chunk.id === EbmlTagId.Timecode) {
-      currentClusterTimecode = chunk.data
+      this._currentClusterTimecode = chunk.data
     }
 
     if (chunk.id === EbmlTagId.Tracks) {
@@ -80,7 +80,7 @@ export class SubtitleParserBase extends Transform {
 
         const subtitle = {
           text: block.payload.toString('utf8'),
-          time: (block.value + currentClusterTimecode) * this.timecodeScale,
+          time: (block.value + this._currentClusterTimecode) * this.timecodeScale,
           duration: blockDuration * this.timecodeScale
         }
 
