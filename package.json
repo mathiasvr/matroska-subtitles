@@ -6,8 +6,7 @@
   "main": "dist/matroska-subtitles.js",
   "module": "dist/matroska-subtitles.module.js",
   "dependencies": {
-    "ebml": "^3.0.0",
-    "ebml-block": "^1.1.2",
+    "ebml-stream": "^1.0.3",
     "readable-stream": "^3.6.0"
   },
   "devDependencies": {

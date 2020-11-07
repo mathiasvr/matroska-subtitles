@@ -1,3 +1,4 @@
+import { EbmlTagId } from 'ebml-stream'
 import { SubtitleParserBase } from './subtitle-parser-base'
 
 export class SubtitleParser extends SubtitleParserBase {
@@ -5,7 +6,8 @@ export class SubtitleParser extends SubtitleParserBase {
     super()
 
     this.decoder.on('data', (chunk) => {
-      if (chunk[0] === 'end' && chunk[1].name === 'Tracks') {
+      if (chunk.id === EbmlTagId.Tracks) {
+        // stop decoding if no subtitle tracks are present
         if (this.subtitleTracks.size === 0) this.end()
       }
     })
