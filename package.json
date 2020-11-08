@@ -32,7 +32,8 @@
     "matroska",
     "subtitle",
     "extract",
-    "parse"
+    "parse",
+    "stream"
   ],
   "author": "Mathias Rasmussen <mathiasvr@gmail.com>",
   "license": "MIT",

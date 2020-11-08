@@ -17,12 +17,12 @@ $ npm install matroska-subtitles
 
 or include it directly:
 ```html
-<script src="https://cdn.jsdelivr.net/npm/matroska-subtitles@3.1.0/dist/matroska-subtitles.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/matroska-subtitles@3.2.1/dist/matroska-subtitles.min.js"></script>
 ```
 
 ## example
 
-```javascript
+```js
 const fs = require('fs')
 const { SubtitleParser } = require('matroska-subtitles')
 
@@ -43,7 +43,7 @@ See [examples](https://github.com/mathiasvr/matroska-subtitles/tree/master/examp
 
 ### `tracks` event response format
 
-```javascript
+```js
 [
   { number: 3, language: 'eng', type: 'utf8', name: 'English(US)' },
   { number: 4, language: 'jpn', type: 'ass', header: '[Script Info]\r\n...' }
@@ -55,7 +55,7 @@ See [examples](https://github.com/mathiasvr/matroska-subtitles/tree/master/examp
 
 ### `subtitle` event response format
 
-```javascript
+```js
 {
   text: 'This blade has a dark past.',
   time: 107250,  // ms
@@ -88,7 +88,8 @@ const { SubtitleStream } = require('matroska-subtitles')
 let subtitleStream = new SubtitleStream()
 
 subtitleStream.once('tracks', (tracks) => {
-  // seek to different stream offset
+  // close the old subtitle stream and open a new at a different stream offset
+  subtitleStream = new SubtitleStream(subtitleStream)
 })
 ```
 
