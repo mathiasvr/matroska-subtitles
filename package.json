@@ -1,6 +1,6 @@
 {
   "name": "matroska-subtitles",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Streaming parser for embedded .mkv subtitles.",
   "source": "src/index.js",
   "main": "dist/matroska-subtitles.js",
