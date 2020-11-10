@@ -29,15 +29,24 @@ export class SubtitleStream extends SubtitleParserBase {
           if (chunk[i + 4 + len] === 0xe7) {
             // okay this is probably a cluster
             this.unstable = false
-            this.decoder.write(chunk.slice(i))
+            this.decoderWrite(chunk.slice(i))
             break
           }
         }
       }
     } else {
-      this.decoder.write(chunk)
+      this.decoderWrite(chunk)
     }
 
     callback(null, chunk)
+  }
+
+  decoderWrite (chunk) {
+    // passthrough stream should allow chained streams to continue on error
+    try {
+      this.decoder.write(chunk)
+    } catch (err) {
+      console.warn('[matroska-subtitles] EBML stream decoding error')
+    }
   }
 }
