@@ -10,7 +10,7 @@
     "readable-stream": "^3.6.0"
   },
   "devDependencies": {
-    "buffer": "^6.0.1",
+    "buffer": "^6.0.2",
     "dev-null": "^0.1.1",
     "microbundle": "^0.12.4",
     "process": "^0.11.10",
