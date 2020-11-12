@@ -17,7 +17,7 @@ $ npm install matroska-subtitles
 
 or include it directly:
 ```html
-<script src="https://cdn.jsdelivr.net/npm/matroska-subtitles@3/dist/matroska-subtitles.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/matroska-subtitles@3.x/dist/matroska-subtitles.min.js"></script>
 ```
 
 ## example
