@@ -61,7 +61,7 @@ export class SubtitleParserBase extends Transform {
 
           const header = getData(entry, EbmlTagId.CodecPrivate)
           if (header && SSA_TYPES.has(track.type)) {
-            track.header = header
+            track.header = header.toString()
           }
 
           this.subtitleTracks.set(track.number, track)
