@@ -12,6 +12,9 @@ module.exports = {
   resolve: {
     alias: {
       stream: 'stream-browserify'
+    },
+    fallback: {
+      zlib: path.resolve(__dirname, 'src/inflateSyncWeb.js')
     }
   },
   plugins: [
