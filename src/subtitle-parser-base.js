@@ -74,7 +74,7 @@ export class SubtitleParserBase extends Transform {
     if (chunk.id === EbmlTagId.BlockGroup) {
       const block = chunk.Children.find(c => c.id === EbmlTagId.Block)
 
-      if (this.subtitleTracks.has(block.track)) {
+      if (block && this.subtitleTracks.has(block.track)) {
         const blockDuration = getData(chunk, EbmlTagId.BlockDuration)
         const type = this.subtitleTracks.get(block.track).type
 
