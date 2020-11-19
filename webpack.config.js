@@ -12,11 +12,15 @@ module.exports = {
   resolve: {
     alias: {
       stream: 'stream-browserify'
+    },
+    fallback: {
+      zlib: path.resolve(__dirname, 'src/inflateSyncWeb.js')
     }
   },
   plugins: [
     new webpack.ProvidePlugin({
       process: 'process-fast',
       Buffer: ['buffer', 'Buffer']
-    })]
+    })
+  ]
 }
