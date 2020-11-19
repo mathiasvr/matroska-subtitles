@@ -21,7 +21,7 @@
   },
   "scripts": {
     "test": "standard && node tests/test.js",
-    "build": "microbundle --name=MatroskaSubtitles",
+    "build": "microbundle --name=MatroskaSubtitles --target=node",
     "bundle": "webpack",
     "prepare": "npm run build && npm run bundle",
     "prepublishOnly": "npm test"
