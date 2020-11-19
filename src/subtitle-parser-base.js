@@ -1,5 +1,6 @@
 import { Transform } from 'readable-stream'
 import { EbmlStreamDecoder, EbmlTagId } from 'ebml-stream'
+import { inflateSync } from 'zlib'
 
 const SSA_TYPES = new Set(['ssa', 'ass'])
 const SSA_KEYS = ['readOrder', 'layer', 'style', 'name', 'marginL', 'marginR', 'marginV', 'effect', 'text']
@@ -64,6 +65,17 @@ export class SubtitleParserBase extends Transform {
             track.header = header.toString()
           }
 
+          // TODO: Assume zlib deflate compression
+          const compressed = entry.Children.find(c =>
+            c.id === EbmlTagId.ContentEncodings &&
+            c.Children.find(cc =>
+              cc.id === EbmlTagId.ContentEncoding &&
+              cc.Children.find(ccc => ccc.id === EbmlTagId.ContentCompression)))
+
+          if (compressed) {
+            track._compressed = true
+          }
+
           this.subtitleTracks.set(track.number, track)
         }
       }
@@ -76,20 +88,24 @@ export class SubtitleParserBase extends Transform {
 
       if (block && this.subtitleTracks.has(block.track)) {
         const blockDuration = getData(chunk, EbmlTagId.BlockDuration)
-        const type = this.subtitleTracks.get(block.track).type
+        const track = this.subtitleTracks.get(block.track)
+
+        const payload = track._compressed
+          ? inflateSync(Buffer.from(block.payload))
+          : block.payload
 
         const subtitle = {
-          text: block.payload.toString('utf8'),
+          text: payload.toString('utf8'),
           time: (block.value + this._currentClusterTimecode) * this.timecodeScale,
           duration: blockDuration * this.timecodeScale
         }
 
-        if (SSA_TYPES.has(type)) {
+        if (SSA_TYPES.has(track.type)) {
           // extract SSA/ASS keys
           const values = subtitle.text.split(',')
 
           // ignore read-order, and skip layer if ssa
-          for (let i = type === 'ssa' ? 2 : 1; i < 8; i++) {
+          for (let i = track.type === 'ssa' ? 2 : 1; i < 8; i++) {
             subtitle[SSA_KEYS[i]] = values[i]
           }
 
