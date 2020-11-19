@@ -14,9 +14,9 @@
     "dev-null": "^0.1.1",
     "microbundle": "^0.12.4",
     "process": "^0.11.10",
-    "standard": "*",
+    "standard": "^16.0.3",
     "stream-browserify": "^3.0.0",
-    "webpack": "^5.4.0",
+    "webpack": "^5.6.0",
     "webpack-cli": "^4.2.0"
   },
   "scripts": {
