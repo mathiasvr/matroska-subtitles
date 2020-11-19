@@ -42,7 +42,7 @@ export class SubtitleParserBase extends Transform {
     }
 
     if (chunk.id === EbmlTagId.Tracks) {
-      for (const entry of chunk.Children) {
+      for (const entry of chunk.Children.filter(c => c.id === EbmlTagId.TrackEntry)) {
         // Skip non subtitle tracks
         if (getData(entry, EbmlTagId.TrackType) !== 0x11) continue
 
