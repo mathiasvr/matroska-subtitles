@@ -11,14 +11,12 @@ module.exports = {
   devtool: 'source-map',
   resolve: {
     alias: {
-      stream: 'stream-browserify',
-      buffer: 'buffer',
-      process: 'process'
+      stream: 'stream-browserify'
     }
   },
   plugins: [
     new webpack.ProvidePlugin({
-      process: 'process/browser.js',
+      process: 'process-fast',
       Buffer: ['buffer', 'Buffer']
     })]
 }
