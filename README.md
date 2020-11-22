@@ -1,9 +1,10 @@
 # matroska-subtitles
 
-[![npm](https://img.shields.io/npm/v/matroska-subtitles.svg)](https://npm.im/matroska-subtitles)
-![downloads](https://img.shields.io/npm/dt/matroska-subtitles.svg)
-[![dependencies](https://david-dm.org/mathiasvr/matroska-subtitles.svg)](https://david-dm.org/mathiasvr/matroska-subtitles)
-[![license](https://img.shields.io/:license-MIT-blue.svg)](https://mvr.mit-license.org)
+[![NPM](https://img.shields.io/npm/v/matroska-subtitles.svg?style=for-the-badge)](https://npm.im/matroska-subtitles)
+![Downloads](https://img.shields.io/npm/dt/matroska-subtitles.svg?style=for-the-badge)
+![Dependency status](https://img.shields.io/librariesio/release/npm/matroska-subtitles?style=for-the-badge)
+[![License](https://img.shields.io/:license-MIT-blue.svg?style=for-the-badge)](https://mvr.mit-license.org)
+[![forthebadge](https://forthebadge.com/images/badges/powered-by-coffee.svg)](https://forthebadge.com)
 
 Streaming parser for embedded .mkv subtitles.
 
@@ -34,7 +35,6 @@ parser.once('tracks', (tracks) => console.log(tracks))
 // afterwards each subtitle is emitted
 parser.on('subtitle', (subtitle, trackNumber) =>
   console.log('Track ' + trackNumber + ':', subtitle))
-
 
 fs.createReadStream('Sintel.2010.720p.mkv').pipe(parser)
 ```
@@ -69,6 +69,7 @@ The parser now also has a `file` event that emits embedded mkv files, mainly to 
 ```js
 parser.on('file', file => console.log('file:', file))
 ```
+
 Output:
 ```js
 {
