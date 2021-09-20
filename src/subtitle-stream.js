@@ -4,7 +4,7 @@ export class SubtitleStream extends SubtitleParserBase {
   constructor (prevInstance) {
     super()
 
-    if (prevInstance instanceof SubtitleStream) {
+    if (prevInstance instanceof SubtitleParserBase) {
       prevInstance.once('drain', () => prevInstance.end())
 
       // copy previous metadata
