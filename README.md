@@ -36,6 +36,8 @@ parser.once('tracks', (tracks) => console.log(tracks))
 parser.on('subtitle', (subtitle, trackNumber) =>
   console.log('Track ' + trackNumber + ':', subtitle))
 
+parser.on('chapters', chapters => console.log(chapters))
+
 fs.createReadStream('Sintel.2010.720p.mkv').pipe(parser)
 ```
 
@@ -61,6 +63,17 @@ See [examples](https://github.com/mathiasvr/matroska-subtitles/tree/master/examp
   time: 107250,  // ms
   duration: 1970 // ms
 }
+```
+
+### `chapters` event response format
+
+```js
+[
+  { start: 0, /*ms*/ end: 89900, /*ms*/ text: 'OP', language: 'eng' },
+  { start: 89900, end: 634860, text: 'Part A', language: 'eng' },
+  { start: 634860, end: 1279840, text: 'Part B', language: 'eng' },
+  { start: 1279840, end: 1369877, text: 'ED', language: 'eng' }
+]
 ```
 
 ## attached files
