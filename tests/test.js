@@ -47,6 +47,11 @@ function testBasic () {
     { number: 7, language: 'und', type: 'utf8' }
   ]))
 
+  parser.once('chapters', chapters => {
+    // test files don't have chapters :/
+    deepStrictEqual(chapters, [])
+  })
+
   const subtitles = {}
 
   parser.on('subtitle', (subtitle, trackNumber) => {
